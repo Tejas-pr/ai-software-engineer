@@ -31,3 +31,30 @@ dist-ssr
 
 # typescript
 *.tsbuildinfo
+
+# fastapi
+# Python virtual environments
+.venv/
+venv/
+ENV/
+
+# Python byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+
+# Python tooling caches (mypy, ruff, etc.)
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Database (if you run SQLite locally)
+*.db
+*.sqlite3
