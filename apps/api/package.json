@@ -1,9 +1,13 @@
 {
-    "private":  true,
-    "name":  "api",
-    "version":  "0.0.1",
-    "scripts":  {
-        "start":  "uv run uvicorn app.main:app",
-        "dev":  "uv run uvicorn app.main:app --reload"
-    }
+  "name": "api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "uv run uvicorn app.main:app",
+    "dev": "uv run uvicorn app.main:app --reload",
+    "lint": "uv run ruff check .",
+    "format": "uv run ruff format --check .",
+    "typecheck": "uv run mypy .",
+    "test": "uv run pytest"
+  }
 }
