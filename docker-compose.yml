@@ -1,0 +1,21 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: ai_swe_postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: ai_swe_user
+      POSTGRES_PASSWORD: ai_swe_password
+      POSTGRES_DB: ai_swe_db
+    volumes:
+      - ai_swe_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_swe_user -d ai_swe_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ai_swe_postgres_data:
