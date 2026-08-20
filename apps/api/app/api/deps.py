@@ -1,33 +1,30 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, Request, status
 from sqlmodel import Session, select
 
 from app.db import get_session
 from app.models.user import User
-from app.utils.security import decode_access_token
+from app.utils.security import decode_token
 
-# Looks for "Authorization: Bearer <JWT>" header
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="api/v1/accounts/auth/github/login", auto_error=False
-)
+
+def get_access_token_from_cookie(request: Request) -> str | None:
+    return request.cookies.get("access_token")
 
 
 def get_current_user(
-    token: Annotated[str | None, Depends(oauth2_scheme)] = None,
+    token: Annotated[str | None, Depends(get_access_token_from_cookie)] = None,
     session: Annotated[Session | None, Depends(get_session)] = None,
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
     )
 
     if not token or session is None:
         raise credentials_exception
 
-    payload = decode_access_token(token)
+    payload = decode_token(token, "access")
     if payload is None:
         raise credentials_exception
 

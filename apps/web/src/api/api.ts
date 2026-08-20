@@ -1,86 +1,48 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios"
 import { API_ENDPOINTS } from "./endpoints"
-import {
-  removeLocalStorageItem,
-  setLocalStorageItem,
-} from "@/utils/localstorage"
 
-const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000"
+export const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
+// Auth is entirely httpOnly cookies (access + refresh) set by the backend —
+// no token ever touches localStorage or JS-readable state.
 export const apiClient = axios.create({
   baseURL,
-  withCredentials: true, // Send cookies with requests
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 })
 
-// Request interceptor
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = window.localStorage.getItem("token")
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => Promise.reject(error)
-)
-
-// Response interceptor to handle 401s and auto-refresh token
+// Response interceptor: on 401, try one silent refresh (via the refresh
+// cookie) and retry the original request; if that fails, send the user to
+// /login. The refresh call itself is excluded to avoid an infinite loop.
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean
     }
+    const isRefreshCall = originalRequest?.url?.includes(
+      API_ENDPOINTS.AUTH.REFRESH
+    )
 
-    // If error is 401 and we haven't already retried
-    // Skip retrying if the request was for auth endpoints like login or signup
-    const authEndpoints = Object.values(API_ENDPOINTS.AUTH)
-    const isAuthEndpoint =
-      originalRequest.url &&
-      authEndpoints.some((ep) => originalRequest.url!.includes(ep))
+    if (error.response?.status !== 401 || isRefreshCall) {
+      return Promise.reject(error)
+    }
 
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !isAuthEndpoint
-    ) {
+    if (!originalRequest._retry) {
       originalRequest._retry = true
-
       try {
-        // Try to refresh the token via cookie
-        const refreshResponse = await axios.post(
-          `${baseURL}${API_ENDPOINTS.AUTH.REFRESH}`,
-          {},
-          {
-            withCredentials: true,
-          }
-        )
-
-        // Update localStorage with the latest permissions and user state returned by refresh
-        if (refreshResponse.data && refreshResponse.data.user) {
-          setLocalStorageItem("user", refreshResponse.data.user)
-          const newRole =
-            refreshResponse.data.user.is_superuser ||
-            refreshResponse.data.user.is_marketplace_admin
-              ? "admin"
-              : "buyer"
-          setLocalStorageItem("role", newRole)
-        }
-
-        // Retry the original request
+        await apiClient.post(API_ENDPOINTS.AUTH.REFRESH)
         return apiClient(originalRequest)
-      } catch (refreshError) {
-        // Refresh token is expired or invalid, log user out
-        removeLocalStorageItem("user")
-        removeLocalStorageItem("role")
-        window.location.href = "/login"
-        return Promise.reject(refreshError)
+      } catch {
+        // fall through to logout redirect below
       }
     }
 
+    if (window.location.pathname !== "/login") {
+      window.location.href = "/login"
+    }
     return Promise.reject(error)
   }
 )

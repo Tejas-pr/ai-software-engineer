@@ -1,17 +1,54 @@
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
-from sqlmodel import Session, select
+from sqlmodel import Session, SQLModel, select
 
 from app.api.deps import get_current_user
 from app.config import settings
 from app.db import get_session
 from app.models.user import User
-from app.utils.security import create_access_token
+from app.utils.security import create_access_token, create_refresh_token, decode_token
 
 router = APIRouter(prefix="/accounts/auth", tags=["auth"])
+
+# Only send the cookie over HTTPS once we're actually deployed behind one.
+COOKIE_SECURE = settings.ENVIRONMENT.lower() == "production"
+AUTH_PATH = "/api/v1/accounts/auth"
+
+
+class UserPublic(SQLModel):
+    """What we're willing to hand back to the client — never hashed_password."""
+
+    id: int
+    username: str
+    email: str
+    is_active: bool
+
+
+def _set_auth_cookies(response: Response, user: User) -> None:
+    access_token = create_access_token(data={"sub": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.email})
+    response.set_cookie(
+        "access_token",
+        access_token,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+    # Scoped to the auth routes only — no reason for every API call to carry it.
+    response.set_cookie(
+        "refresh_token",
+        refresh_token,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path=AUTH_PATH,
+    )
 
 
 @router.get("/github/login")
@@ -28,7 +65,7 @@ def github_login():
 
 @router.get("/github/callback")
 async def github_callback(code: str, session: Session = Depends(get_session)):
-    """Receives the callback from GitHub, exchanges code for token, syncs user, and issues a JWT."""
+    """Receives the callback from GitHub, exchanges code for token, syncs user, and issues auth cookies."""
     async with httpx.AsyncClient() as client:
         # 1. Exchange auth code for GitHub access token
         token_response = await client.post(
@@ -95,14 +132,44 @@ async def github_callback(code: str, session: Session = Depends(get_session)):
             session.commit()
             session.refresh(db_user)
 
-    # 5. Create app JWT access token
-    app_token = create_access_token(data={"sub": db_user.email})
-
-    # 6. Redirect back to frontend callback page with the token
-    redirect_url = f"{settings.FRONTEND_URL}/login/callback?token={app_token}"
-    return RedirectResponse(redirect_url)
+    # 5. Issue auth cookies and redirect back to the frontend — no token in the URL.
+    redirect = RedirectResponse(f"{settings.FRONTEND_URL}/login/callback")
+    _set_auth_cookies(redirect, db_user)
+    return redirect
 
 
-@router.get("/me/", response_model=User)
+@router.post("/refresh/")
+def refresh(
+    request: Request, response: Response, session: Session = Depends(get_session)
+):
+    """Reads the refresh cookie and issues a fresh access (+ refresh) cookie pair."""
+    token = request.cookies.get("refresh_token")
+    unauthorized = HTTPException(
+        status_code=401, detail="Invalid or expired refresh token"
+    )
+
+    if not token:
+        raise unauthorized
+
+    payload = decode_token(token, "refresh")
+    if payload is None:
+        raise unauthorized
+
+    user = session.exec(select(User).where(User.email == payload.get("sub"))).first()
+    if user is None:
+        raise unauthorized
+
+    _set_auth_cookies(response, user)
+    return {"status": "ok"}
+
+
+@router.post("/logout/")
+def logout(response: Response):
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path=AUTH_PATH)
+    return {"status": "ok"}
+
+
+@router.get("/me/", response_model=UserPublic)
 def get_me(current_user: Annotated[User, Depends(get_current_user)]):
     return current_user

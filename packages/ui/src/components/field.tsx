@@ -116,7 +116,7 @@ function FieldLabel({
 function FieldTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      data-slot="field-label"
+      data-slot="field-title"
       className={cn(
         "flex w-fit items-center gap-2 text-xs/relaxed font-medium group-data-[disabled=true]/field:opacity-50",
         className
@@ -189,7 +189,9 @@ function FieldError({
     }
 
     const uniqueErrors = [
-      ...new Map(errors.map((error) => [error?.message, error])).values(),
+      ...new Map(
+        errors.map((error, index) => [error?.message ?? index, error])
+      ).values(),
     ]
 
     if (uniqueErrors?.length == 1) {

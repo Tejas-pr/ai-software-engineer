@@ -2,13 +2,13 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@workspace/ui/components/button"
 import { getUser } from "@/api/user.api"
+import { logout } from "@/api/auth.api"
 
 interface User {
-  id: string
+  id: number
   username: string
   email: string
-  is_superuser: boolean
-  is_marketplace_admin: boolean
+  is_active: boolean
 }
 
 export function Dashboard() {
@@ -18,29 +18,27 @@ export function Dashboard() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const token = window.localStorage.getItem("token")
-    if (!token) {
-      navigate("/login")
-      return
-    }
-
     getUser()
       .then((res) => {
         setUser(res)
         setLoading(false)
       })
       .catch((err) => {
-        setError(err.message || "Failed to load user session")
-        setLoading(false)
-        if (err.response?.status === 401) {
-          window.localStorage.removeItem("token")
-          navigate("/login")
+        // 401s are handled centrally by the api client (refresh-or-redirect
+        // to /login) — just surface anything else here.
+        if (err.response?.status !== 401) {
+          setError(err.message || "Failed to load user session")
         }
+        setLoading(false)
       })
-  }, [navigate])
+  }, [])
 
-  const handleLogout = () => {
-    window.localStorage.removeItem("token")
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch {
+      // best-effort — the cookies will simply expire on their own otherwise
+    }
     navigate("/login")
   }
 
@@ -129,7 +127,7 @@ export function Dashboard() {
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground">
                       <span className="text-lg font-bold">
-                        {user.username.substring(0, 2).toUpperCase()}
+                        {(user.username || "?").substring(0, 2).toUpperCase()}
                       </span>
                     </div>
                     <div>
@@ -147,11 +145,9 @@ export function Dashboard() {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        Admin Status:
-                      </span>
+                      <span className="text-muted-foreground">Status:</span>
                       <span className="font-semibold text-primary">
-                        {user.is_superuser ? "Superuser" : "Standard"}
+                        {user.is_active ? "Active" : "Inactive"}
                       </span>
                     </div>
                   </div>

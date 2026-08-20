@@ -1,6 +1,8 @@
 import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
 import { Field, FieldGroup } from "@workspace/ui/components/field"
+import { baseURL } from "@/api/api"
+import { API_ENDPOINTS } from "@/api/endpoints"
 
 export function LoginForm({
   className,
@@ -45,8 +47,7 @@ export function LoginForm({
             type="button"
             className="w-full"
             onClick={() => {
-              window.location.href =
-                "http://localhost:8000/api/v1/accounts/auth/github/login"
+              window.location.href = `${baseURL}${API_ENDPOINTS.AUTH.GITHUB_LOGIN}`
             }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">

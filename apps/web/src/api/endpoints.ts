@@ -11,5 +11,6 @@ export const API_ENDPOINTS = {
     REFRESH: `${BASE}/accounts/auth/refresh/`,
     LOGOUT: `${BASE}/accounts/auth/logout/`,
     ME: `${BASE}/accounts/auth/me/`,
+    GITHUB_LOGIN: `${BASE}/accounts/auth/github/login`,
   },
 }
