@@ -1,1 +1,3 @@
+bun run format
+git add .
 bun lint && bun typecheck && bun run build

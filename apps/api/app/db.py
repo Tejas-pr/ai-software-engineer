@@ -6,6 +6,7 @@ from app.config import settings
 # echo=True prints SQL statements to the console (useful in development).
 engine = create_engine(settings.DATABASE_URL, echo=True)
 
+
 # Dependency to provide a database session per request
 def get_session():
     with Session(engine) as session:
