@@ -4,12 +4,12 @@ from typing import Annotated
 import redis
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session, SQLModel, text
+from sqlmodel import Session, text
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.system import router as system_router
 from app.config import settings
-from app.db import engine, get_session
+from app.db import get_session
 from app.rate_limiter import RateLimiter
 from app.redis_client import get_redis
 
@@ -19,7 +19,7 @@ from app.redis_client import get_redis
 async def lifespan(app: FastAPI):
     # --- STARTUP ---
     # Create all tables defined in SQLModel (ideal for development/Phase 0)
-    SQLModel.metadata.create_all(engine)
+    # SQLModel.metadata.create_all(engine)
 
     # Initialize the Redis connection pool and store it in app state
     app.state.redis_pool = redis.ConnectionPool(

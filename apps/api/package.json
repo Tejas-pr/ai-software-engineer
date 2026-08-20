@@ -8,6 +8,10 @@
     "lint": "uv run ruff check .",
     "format": "uv run ruff format .",
     "typecheck": "uv run mypy .",
-    "test": "uv run pytest"
+    "test": "uv run pytest",
+    "db:generate": "uv run alembic revision --autogenerate",
+    "db:migrate": "uv run alembic upgrade head",
+    "db:rollback": "uv run alembic downgrade -1",
+    "db:status": "uv run alembic current"
   }
 }

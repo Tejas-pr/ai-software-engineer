@@ -1,7 +1,9 @@
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field
+
+from app.models.base import TimestampModel
 
 
-class Project(SQLModel, table=True):
+class Project(TimestampModel, table=True):
     __tablename__ = "projects"
 
     id: int | None = Field(default=None, primary_key=True)
