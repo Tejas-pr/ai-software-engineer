@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@workspace/ui/components/button"
+import { Input } from "@workspace/ui/components/input"
 import { getUser } from "@/api/user.api"
 import { logout } from "@/api/auth.api"
+import { sendChatMessageStream, type ChatMessage } from "@/api/chat.api"
 
 interface User {
   id: number
@@ -11,11 +13,49 @@ interface User {
   is_active: boolean
 }
 
+const AVAILABLE_MODELS = [
+  { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash (Cloud)" },
+  { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash (Cloud)" },
+  { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash (Cloud)" },
+  { id: "qwen2.5-coder:7b", name: "Qwen 2.5 Coder 7B (Local)" },
+  { id: "deepseek-r1:8b", name: "DeepSeek R1 8B (Local)" },
+  { id: "deepseek-r1:14b", name: "DeepSeek R1 14B (Local)" },
+]
+
+function parseMessageContent(content: string) {
+  const thinkStart = content.indexOf("<think>")
+  const thinkEnd = content.indexOf("</think>")
+
+  if (thinkStart !== -1) {
+    if (thinkEnd !== -1) {
+      // Both start and end found
+      const thinking = content.substring(thinkStart + 7, thinkEnd).trim()
+      const answer = content.substring(thinkEnd + 8).trim()
+      return { thinking, answer, isThinking: false }
+    } else {
+      // Start found, but still thinking
+      const thinking = content.substring(thinkStart + 7).trim()
+      return { thinking, answer: "", isThinking: true }
+    }
+  }
+
+  // No thinking block found
+  return { thinking: "", answer: content, isThinking: false }
+}
+
 export function Dashboard() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
+
+  // Chat Console state variables
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [inputMessage, setInputMessage] = useState("")
+  const [selectedModel, setSelectedModel] = useState("gemini-3.5-flash")
+  const [systemPrompt, setSystemPrompt] = useState("")
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatErrorMsg, setChatErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
     getUser()
@@ -39,7 +79,93 @@ export function Dashboard() {
     } catch {
       // best-effort — the cookies will simply expire on their own otherwise
     }
-    navigate("/login")
+    navigate("/login", { state: { loggedOut: true } })
+  }
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inputMessage.trim()) return
+
+    const userMsg: ChatMessage = { role: "user", content: inputMessage }
+    const updatedMessages = [...messages, userMsg]
+
+    setMessages(updatedMessages)
+    setInputMessage("")
+    setChatLoading(true)
+    setChatErrorMsg(null)
+
+    const assistantMsgIndex = updatedMessages.length
+    let accumulatedResponse = ""
+
+    try {
+      const response = await sendChatMessageStream({
+        model: selectedModel,
+        messages: updatedMessages,
+        system_instruction: systemPrompt.trim() || undefined,
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(
+          errorText || `Failed to start stream with status ${response.status}`
+        )
+      }
+
+      if (!response.body) {
+        throw new Error("No response body received for streaming")
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+
+      setMessages([...updatedMessages, { role: "assistant", content: "" }])
+      setChatLoading(false) // Stop thinking spinner once the stream starts delivering
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        accumulatedResponse += chunk
+
+        setMessages((prev) => {
+          const newMessages = [...prev]
+          if (newMessages[assistantMsgIndex]) {
+            newMessages[assistantMsgIndex] = {
+              role: "assistant",
+              content: accumulatedResponse,
+            }
+          }
+          return newMessages
+        })
+      }
+
+      // Only inspect the error marker once the stream has fully closed —
+      // checking mid-stream can catch the marker before its message text
+      // has arrived in a later chunk, producing a blank error.
+      const errorMatch = accumulatedResponse.match(
+        /\n?\[STREAM_ERROR: ([\s\S]*)\]\s*$/
+      )
+      if (errorMatch) {
+        setChatErrorMsg(errorMatch[1])
+        const cleanContent = accumulatedResponse
+          .slice(0, errorMatch.index)
+          .trimEnd()
+        setMessages((prev) => {
+          const newMessages = [...prev]
+          if (newMessages[assistantMsgIndex]) {
+            newMessages[assistantMsgIndex] = {
+              role: "assistant",
+              content: cleanContent,
+            }
+          }
+          return newMessages
+        })
+      }
+    } catch (err: any) {
+      setChatErrorMsg(err.message || "Failed to get AI response")
+      setChatLoading(false)
+    }
   }
 
   if (loading) {
@@ -109,6 +235,161 @@ export function Dashboard() {
                   View Docs
                 </Button>
               </div>
+            </div>
+
+            {/* LLM Chat Playground */}
+            <div className="space-y-4 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-bold tracking-tight">
+                  LLM Playground
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Direct communication with configured cloud and local LLM
+                  models (Phase 2).
+                </p>
+              </div>
+
+              {/* Model and System Prompt Settings */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                    Target Model
+                  </label>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="w-full cursor-pointer rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-primary focus:outline-none"
+                  >
+                    {AVAILABLE_MODELS.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                    System Instructions (Optional)
+                  </label>
+                  <Input
+                    placeholder="e.g. You are a Senior DevOps Engineer..."
+                    value={systemPrompt}
+                    onChange={(e) => setSystemPrompt(e.target.value)}
+                    className="rounded-lg"
+                  />
+                </div>
+              </div>
+
+              {/* Messages Panel */}
+              <div className="h-[300px] space-y-4 overflow-y-auto rounded-lg border border-border bg-muted/30 p-4">
+                {messages.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    Start a conversation with{" "}
+                    {AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.name}
+                    ...
+                  </div>
+                ) : (
+                  messages.map((msg, index) => {
+                    const isUser = msg.role === "user"
+                    const { thinking, answer, isThinking } =
+                      parseMessageContent(msg.content)
+
+                    return (
+                      <div
+                        key={index}
+                        className={`flex flex-col ${
+                          isUser ? "items-end" : "items-start"
+                        }`}
+                      >
+                        <div className="mb-1 font-mono text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                          {isUser ? "You" : "AI"}
+                        </div>
+
+                        {isUser ? (
+                          <div className="max-w-[85%] rounded-lg bg-primary px-4 py-2 text-sm font-medium whitespace-pre-wrap text-primary-foreground">
+                            {msg.content}
+                          </div>
+                        ) : (
+                          <div className="w-full max-w-[85%] space-y-2">
+                            {/* Thinking Block */}
+                            {thinking && (
+                              <div className="w-full space-y-1.5 rounded-lg border border-border bg-muted/40 p-3 font-mono text-xs text-muted-foreground shadow-sm">
+                                <div className="flex items-center gap-1.5 font-semibold text-muted-foreground/80">
+                                  <span className="relative flex h-2 w-2">
+                                    {isThinking && (
+                                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 opacity-75"></span>
+                                    )}
+                                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary/80"></span>
+                                  </span>
+                                  <span>
+                                    {isThinking
+                                      ? "Thinking..."
+                                      : "Thought Process"}
+                                  </span>
+                                </div>
+                                <div className="border-l-2 border-primary/20 pl-3 leading-relaxed whitespace-pre-wrap text-muted-foreground/90">
+                                  {thinking}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Answer Block */}
+                            {(answer || (!thinking && !isThinking)) && (
+                              <div className="w-full rounded-lg border border-border bg-card px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap text-foreground shadow-sm">
+                                {answer || msg.content}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+                {chatLoading && (
+                  <div className="flex animate-pulse items-center gap-2 text-xs text-muted-foreground">
+                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
+                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground delay-75" />
+                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground delay-150" />
+                    <span>AI is thinking...</span>
+                  </div>
+                )}
+                {chatErrorMsg && (
+                  <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
+                    Error: {chatErrorMsg}
+                  </div>
+                )}
+              </div>
+
+              {/* Message Input Form */}
+              <form onSubmit={handleSendMessage} className="flex gap-2">
+                <Input
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  placeholder={`Send a message to ${selectedModel}...`}
+                  disabled={chatLoading}
+                  className="flex-1 rounded-lg"
+                />
+                <Button
+                  type="submit"
+                  disabled={chatLoading || !inputMessage.trim()}
+                  className="rounded-lg px-6 font-semibold"
+                >
+                  Send
+                </Button>
+                {messages.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setMessages([])
+                      setChatErrorMsg(null)
+                    }}
+                    className="rounded-lg"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </form>
             </div>
           </div>
 

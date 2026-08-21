@@ -22,6 +22,24 @@ class Settings(BaseSettings):
         "http://localhost:8000/api/v1/accounts/auth/github/callback"
     )
 
+    # Gemini LLM Settings
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODELS: list[str] = [
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+    ]
+
+    # Ollama Local LLM Settings
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODELS: list[str] = ["qwen2.5-coder:7b", "deepseek-r1:8b"]
+    OLLAMA_CODE_MODEL: str = "qwen2.5-coder:7b"
+    OLLAMA_REASONING_MODEL: str = "deepseek-r1:8b"
+
     # extra="ignore": .env already carries settings for later phases (Gemini,
     # Ollama, ...) that this Settings class doesn't declare yet.
     model_config = SettingsConfigDict(

@@ -13,4 +13,6 @@ export const API_ENDPOINTS = {
     ME: `${BASE}/accounts/auth/me/`,
     GITHUB_LOGIN: `${BASE}/accounts/auth/github/login`,
   },
+  CHAT: `${BASE}/chat/`,
+  CHAT_STREAM: `${BASE}/chat/stream`,
 }

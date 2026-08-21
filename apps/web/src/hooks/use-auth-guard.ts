@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { getUser } from "@/api/user.api"
 
 /**
@@ -11,8 +11,13 @@ import { getUser } from "@/api/user.api"
  */
 export function useRedirectIfAuthed(to: string) {
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
+    if (location.state?.loggedOut) {
+      return
+    }
+
     let cancelled = false
     getUser()
       .then(() => {
@@ -24,5 +29,5 @@ export function useRedirectIfAuthed(to: string) {
     return () => {
       cancelled = true
     }
-  }, [navigate, to])
+  }, [navigate, to, location.state?.loggedOut])
 }
