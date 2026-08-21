@@ -8,7 +8,11 @@
     "lint": "turbo lint",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:generate": "bun --filter api db:generate",
+    "db:migrate": "bun --filter api db:migrate",
+    "db:rollback": "bun --filter api db:rollback",
+    "db:status": "bun --filter api db:status"
   },
   "devDependencies": {
     "husky": "^9.1.7",
