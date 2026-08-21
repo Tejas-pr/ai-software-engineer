@@ -5,11 +5,11 @@ from pathlib import Path
 WORKSPACE_ROOT = Path.cwd()
 
 
-def read_file(file_path: str) -> str:
+def read_file(file_path: str, workspace_root: Path = WORKSPACE_ROOT) -> str:
     """Reads the contents of a file inside the project workspace."""
     try:
-        target_path = (WORKSPACE_ROOT / file_path).resolve()
-        if not target_path.is_relative_to(WORKSPACE_ROOT):
+        target_path = (workspace_root / file_path).resolve()
+        if not target_path.is_relative_to(workspace_root):
             return (
                 "Error: Access denied. Cannot read files outside the project workspace."
             )
@@ -24,11 +24,29 @@ def read_file(file_path: str) -> str:
         return f"Error reading file: {e!s}"
 
 
-def list_files(directory: str = ".") -> str:
+def write_file(
+    file_path: str, content: str, workspace_root: Path = WORKSPACE_ROOT
+) -> str:
+    """Creates or overwrites a file inside the project workspace with `content`."""
+    try:
+        target_path = (workspace_root / file_path).resolve()
+        if not target_path.is_relative_to(workspace_root):
+            return "Error: Access denied. Cannot write files outside the project workspace."
+        if ".env" in target_path.name:
+            return "Error: Access denied. Cannot write environment configuration files."
+
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(content, encoding="utf-8")
+        return f"Wrote {len(content)} characters to {file_path}."
+    except Exception as e:  # noqa: BLE001
+        return f"Error writing file: {e!s}"
+
+
+def list_files(directory: str = ".", workspace_root: Path = WORKSPACE_ROOT) -> str:
     """Lists files inside the project workspace (skips node_modules/venv/.git)."""
     try:
-        target_path = (WORKSPACE_ROOT / directory).resolve()
-        if not target_path.is_relative_to(WORKSPACE_ROOT):
+        target_path = (workspace_root / directory).resolve()
+        if not target_path.is_relative_to(workspace_root):
             return "Error: Access denied. Cannot list directories outside workspace."
         if not target_path.exists() or not target_path.is_dir():
             return f"Error: Directory '{directory}' does not exist."
@@ -46,7 +64,7 @@ def list_files(directory: str = ".") -> str:
                 if file.startswith(".") or ".env" in file:
                     continue
                 full_path = Path(root) / file
-                rel_path = full_path.relative_to(WORKSPACE_ROOT)
+                rel_path = full_path.relative_to(workspace_root)
                 files_list.append(str(rel_path))
 
         if not files_list:
@@ -56,7 +74,7 @@ def list_files(directory: str = ".") -> str:
         return f"Error listing files: {e!s}"
 
 
-def search_code(query: str) -> str:
+def search_code(query: str, workspace_root: Path = WORKSPACE_ROOT) -> str:
     """Searches for occurrences of query text in workspace code files."""
     try:
         results = []
@@ -73,7 +91,7 @@ def search_code(query: str) -> str:
             ".zip",
         }
 
-        for root, dirs, files in os.walk(WORKSPACE_ROOT):
+        for root, dirs, files in os.walk(workspace_root):
             dirs[:] = [
                 d
                 for d in dirs
@@ -91,7 +109,7 @@ def search_code(query: str) -> str:
                     with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                         for line_num, line in enumerate(f, 1):
                             if query in line:
-                                rel_path = file_path.relative_to(WORKSPACE_ROOT)
+                                rel_path = file_path.relative_to(workspace_root)
                                 results.append(f"{rel_path}:{line_num}: {line.strip()}")
                                 if len(results) >= 50:  # Prevent token output blowout
                                     break

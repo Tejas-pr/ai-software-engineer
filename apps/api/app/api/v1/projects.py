@@ -1,0 +1,150 @@
+from typing import Annotated
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlmodel import Session, select
+
+from app.api.deps import get_current_user, get_github_token
+from app.db import get_session
+from app.models.project import Project
+from app.models.user import User
+from app.rag.ingestion import ingest_project
+from app.services.github_api import list_repo_issues, parse_github_url
+from app.services.workspace import clone_repository, workspace_path
+
+router = APIRouter(prefix="/projects", tags=["projects"])
+
+
+class ProjectCreate(BaseModel):
+    github_url: str = Field(..., description="e.g. https://github.com/owner/repo")
+    branch: str = "main"
+    name: str | None = Field(default=None, description="Defaults to 'owner/repo'")
+    description: str | None = None
+
+
+def _clone_and_update_status(
+    project_id: int, github_url: str, branch: str, token: str
+) -> None:
+    """Runs in the background after the API has already responded."""
+    from app.db import engine  # local import: background task builds its own session
+
+    with Session(engine) as session:
+        project = session.get(Project, project_id)
+        if project is None:
+            return
+        try:
+            clone_repository(github_url, branch, token, project_id)
+            project.status = "ready"
+        except Exception as e:  # noqa: BLE001
+            project.status = "failed"
+            project.description = f"Clone failed: {e!s}"
+        session.add(project)
+        session.commit()
+
+
+@router.post("/")
+def create_project(
+    body: ProjectCreate,
+    background_tasks: BackgroundTasks,
+    current_user: Annotated[User, Depends(get_current_user)],
+    token: Annotated[str, Depends(get_github_token)],
+    session: Session = Depends(get_session),
+):
+    """Connects a GitHub repo: creates the Project row, clones it in the background."""
+    owner, repo = parse_github_url(body.github_url)
+    project = Project(
+        user_id=current_user.id,
+        name=body.name or f"{owner}/{repo}",
+        github_url=body.github_url,
+        branch=body.branch,
+        description=body.description,
+        status="pending",
+    )
+    session.add(project)
+    session.commit()
+    session.refresh(project)
+    assert project.id is not None  # set by the DB on commit, above
+
+    background_tasks.add_task(
+        _clone_and_update_status, project.id, body.github_url, body.branch, token
+    )
+    return project
+
+
+@router.get("/")
+def list_projects(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Session = Depends(get_session),
+):
+    statement = select(Project).where(Project.user_id == current_user.id)
+    return session.exec(statement).all()
+
+
+def _get_owned_project(
+    project_id: int, current_user: User, session: Session
+) -> Project:
+    project = session.get(Project, project_id)
+    if project is None or project.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
+
+
+@router.get("/{project_id}")
+def get_project(
+    project_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Session = Depends(get_session),
+):
+    return _get_owned_project(project_id, current_user, session)
+
+
+def _index_project(project_id: int) -> None:
+    """Runs in the background after the API has already responded."""
+    from app.db import engine  # local import: background task builds its own session
+
+    with Session(engine) as session:
+        project = session.get(Project, project_id)
+        if project is None or project.status != "ready":
+            return
+        ingest_project(session, project_id, workspace_path(project_id))
+
+
+@router.post("/{project_id}/index")
+def index_project(
+    project_id: int,
+    background_tasks: BackgroundTasks,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Session = Depends(get_session),
+):
+    """(Re)index the project's workspace for semantic search. Requires the clone to be done."""
+    project = _get_owned_project(project_id, current_user, session)
+    if project.status != "ready":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Project is '{project.status}', not ready to index yet",
+        )
+    background_tasks.add_task(_index_project, project_id)
+    return {"status": "indexing_started"}
+
+
+@router.get("/{project_id}/issues")
+async def get_project_issues(
+    project_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    token: Annotated[str, Depends(get_github_token)],
+    session: Session = Depends(get_session),
+):
+    """Open GitHub issues for this project's repo — feeds the issue picker."""
+    project = _get_owned_project(project_id, current_user, session)
+    owner, repo = parse_github_url(project.github_url)
+    issues = await list_repo_issues(token, owner, repo)
+    return [
+        {
+            "number": issue["number"],
+            "title": issue["title"],
+            "body": issue.get("body"),
+            "url": issue["html_url"],
+            "labels": [label["name"] for label in issue.get("labels", [])],
+        }
+        for issue in issues
+    ]

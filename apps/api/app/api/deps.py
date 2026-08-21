@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 
 from app.db import get_session
 from app.models.user import User
+from app.utils.crypto import decrypt_token
 from app.utils.security import decode_token
 
 
@@ -38,3 +39,19 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
+
+def get_github_token(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> str:
+    """Decrypt and return the current user's GitHub access token.
+
+    Raises 400 (not 401 — the user *is* authenticated) if they signed up
+    before the `repo` scope was requested and need to log in again to grant it.
+    """
+    if not current_user.github_access_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No GitHub token on file — please log out and log back in with GitHub.",
+        )
+    return decrypt_token(current_user.github_access_token)

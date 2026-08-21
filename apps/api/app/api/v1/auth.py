@@ -9,6 +9,7 @@ from app.api.deps import get_current_user
 from app.config import settings
 from app.db import get_session
 from app.models.user import User
+from app.utils.crypto import encrypt_token
 from app.utils.security import create_access_token, create_refresh_token, decode_token
 
 router = APIRouter(prefix="/accounts/auth", tags=["auth"])
@@ -58,7 +59,9 @@ def github_login():
         f"https://github.com/login/oauth/authorize"
         f"?client_id={settings.GITHUB_CLIENT_ID}"
         f"&redirect_uri={settings.GITHUB_REDIRECT_URI}"
-        f"&scope=user:email"
+        # `repo` is required later to clone private repos, create branches,
+        # commit, and open PRs on the user's behalf (see app/agents/github_tools.py).
+        f"&scope=user:email repo"
     )
     return RedirectResponse(github_url)
 
@@ -118,9 +121,6 @@ async def github_callback(code: str, session: Session = Depends(get_session)):
         if db_user:
             # Link existing user account to GitHub
             db_user.github_id = github_id
-            session.add(db_user)
-            session.commit()
-            session.refresh(db_user)
         else:
             # Create a brand new user
             db_user = User(
@@ -128,9 +128,13 @@ async def github_callback(code: str, session: Session = Depends(get_session)):
                 email=primary_email,
                 github_id=github_id,
             )
-            session.add(db_user)
-            session.commit()
-            session.refresh(db_user)
+
+    # Every login carries a fresh GitHub token (scope may have just changed,
+    # or the old one may have been revoked) — always store the latest one.
+    db_user.github_access_token = encrypt_token(github_token)
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
 
     # 5. Issue auth cookies and redirect back to the frontend — no token in the URL.
     redirect = RedirectResponse(f"{settings.FRONTEND_URL}/login/callback")

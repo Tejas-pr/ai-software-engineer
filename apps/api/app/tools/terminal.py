@@ -5,7 +5,9 @@ from pathlib import Path
 WORKSPACE_ROOT = Path.cwd()
 
 
-def run_command(command: str) -> str:
+def run_command(
+    command: str, workspace_root: Path = WORKSPACE_ROOT, timeout: float = 15.0
+) -> str:
     """Executes a shell command inside the project workspace directory."""
     try:
         # Basic safety check to prevent obviously destructive actions
@@ -13,14 +15,17 @@ def run_command(command: str) -> str:
         if any(keyword in command for keyword in forbidden_keywords):
             return "Error: Command blocked. Destructive commands are forbidden."
 
-        # Run command with a 15-second timeout to avoid locking the backend thread
+        # Run command with a timeout to avoid locking the backend thread.
+        # Longer than the chat-console default: agent runs execute real
+        # build/test commands (git clone, npm install, pytest), not just
+        # quick lookups.
         result = subprocess.run(
             command,
             shell=True,
-            cwd=WORKSPACE_ROOT,
+            cwd=workspace_root,
             capture_output=True,
             text=True,
-            timeout=15.0,
+            timeout=timeout,
             check=False,
         )
 
@@ -36,6 +41,6 @@ def run_command(command: str) -> str:
         return f"Exit Code: {result.returncode}\n" + "\n".join(output)
 
     except subprocess.TimeoutExpired:
-        return "Error: Command execution timed out after 15 seconds."
+        return f"Error: Command execution timed out after {timeout:g} seconds."
     except Exception as e:  # noqa: BLE001
         return f"Error executing command: {e!s}"
