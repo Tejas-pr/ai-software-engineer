@@ -52,6 +52,9 @@ __pycache__/
 htmlcov/
 .coverage.*
 
+# Cloned project repos agents work in — real code, not project source
+apps/api/workspaces/
+
 # Python tooling caches (mypy, ruff, etc.)
 .mypy_cache/
 .ruff_cache/

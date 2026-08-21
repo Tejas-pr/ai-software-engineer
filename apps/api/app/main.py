@@ -6,8 +6,11 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, text
 
+from app.api.v1.agent import router as agent_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.chat import router as chat_router
+from app.api.v1.github import router as github_router
+from app.api.v1.projects import router as projects_router
 from app.api.v1.system import router as system_router
 from app.config import settings
 from app.db import get_session
@@ -58,6 +61,9 @@ api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(auth_router)
 api_v1_router.include_router(system_router)
 api_v1_router.include_router(chat_router)
+api_v1_router.include_router(github_router)
+api_v1_router.include_router(projects_router)
+api_v1_router.include_router(agent_router)
 
 # Include the versioned router in the main FastAPI app
 app.include_router(api_v1_router)

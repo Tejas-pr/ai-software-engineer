@@ -119,7 +119,6 @@ export function Dashboard() {
       const decoder = new TextDecoder()
 
       setMessages([...updatedMessages, { role: "assistant", content: "" }])
-      setChatLoading(false) // Stop thinking spinner once the stream starts delivering
 
       while (true) {
         const { value, done } = await reader.read()
@@ -127,6 +126,7 @@ export function Dashboard() {
 
         const chunk = decoder.decode(value, { stream: true })
         accumulatedResponse += chunk
+        setChatLoading(false) // Stop spinner once real content actually arrives
 
         setMessages((prev) => {
           const newMessages = [...prev]
@@ -162,8 +162,10 @@ export function Dashboard() {
           return newMessages
         })
       }
-    } catch (err: any) {
-      setChatErrorMsg(err.message || "Failed to get AI response")
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to get AI response"
+      setChatErrorMsg(message)
       setChatLoading(false)
     }
   }

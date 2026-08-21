@@ -22,6 +22,14 @@ class Settings(BaseSettings):
         "http://localhost:8000/api/v1/accounts/auth/github/callback"
     )
 
+    # Encrypts the stored GitHub access token at rest (see app/utils/crypto.py)
+    TOKEN_ENCRYPTION_KEY: str = ""
+
+    # Where connected repos get cloned to, one subdirectory per project id.
+    # This *is* the sandbox boundary for filesystem/terminal tools during an
+    # agent run (see app/agents/tools.py) — never point this at the app repo.
+    WORKSPACES_ROOT: str = "./workspaces"
+
     # Gemini LLM Settings
     GEMINI_API_KEY: str = ""
     GEMINI_MODELS: list[str] = [
@@ -39,6 +47,18 @@ class Settings(BaseSettings):
     OLLAMA_MODELS: list[str] = ["qwen2.5-coder:7b", "deepseek-r1:8b"]
     OLLAMA_CODE_MODEL: str = "qwen2.5-coder:7b"
     OLLAMA_REASONING_MODEL: str = "deepseek-r1:8b"
+
+    # Anthropic (Claude) Settings — cloud provider option for agent runs
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODELS: list[str] = [
+        "claude-sonnet-5",
+        "claude-opus-5",
+        "claude-haiku-4-5-20251001",
+    ]
+
+    # OpenAI Settings — cloud provider option for agent runs
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODELS: list[str] = ["gpt-5.1", "gpt-5.1-mini"]
 
     # extra="ignore": .env already carries settings for later phases (Gemini,
     # Ollama, ...) that this Settings class doesn't declare yet.
@@ -62,6 +82,8 @@ class Settings(BaseSettings):
                 )
             if self.JWT_SECRET == "your_super_secret_jwt_key_here":
                 raise ValueError("JWT_SECRET must be changed in production!")
+            if not self.TOKEN_ENCRYPTION_KEY:
+                raise ValueError("TOKEN_ENCRYPTION_KEY must be set in production!")
         return self
 
 
