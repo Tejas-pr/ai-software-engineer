@@ -114,35 +114,39 @@ async def _generate_gemini(
             # --- TOOL INVOCATION CHECK ---
             function_call = parts[0].get("functionCall")
             if function_call:
-                from app.tools.filesystem import read_file
+                from app.tools.filesystem import list_files, read_file, search_code
 
                 func_name = function_call["name"]
                 arguments = function_call["args"]
 
+                # A. Execute the Python tool matching func_name
                 if func_name == "read_file":
-                    # A. Execute the Python tool
                     result = read_file(arguments["file_path"])
+                elif func_name == "list_files":
+                    result = list_files(arguments.get("directory", "."))
+                elif func_name == "search_code":
+                    result = search_code(arguments["query"])
+                else:
+                    result = f"Error: Tool '{func_name}' is not supported."
 
-                    # B. Add the model's call request to history
-                    messages.append(
-                        {
-                            "role": "assistant",
-                            "content": "",
-                            "tool_calls": [{"name": func_name, "args": arguments}],
-                        }
-                    )
-                    # C. Add the tool response to history
-                    messages.append(
-                        {"role": "tool", "content": result, "name": func_name}
-                    )
+                # B. Add the model's call request to history
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": "",
+                        "tool_calls": [{"name": func_name, "args": arguments}],
+                    }
+                )
+                # C. Add the tool response to history
+                messages.append({"role": "tool", "content": result, "name": func_name})
 
-                    # D. Call again recursively with updated history to get final text
-                    return await generate_chat_response(
-                        model=model,
-                        messages=messages,
-                        system_instruction=system_instruction,
-                        temperature=temperature,
-                    )
+                # D. Call again recursively with updated history to get final text
+                return await generate_chat_response(
+                    model=model,
+                    messages=messages,
+                    system_instruction=system_instruction,
+                    temperature=temperature,
+                )
 
             # If no tool was called, return the text
             return parts[0]["text"]
@@ -211,36 +215,42 @@ async def _generate_ollama(
 
             # --- TOOL INVOCATION CHECK ---
             if tool_calls:
-                from app.tools.filesystem import read_file
+                from app.tools.filesystem import list_files, read_file, search_code
 
                 for tool_call in tool_calls:
                     func_name = tool_call["function"]["name"]
                     arguments = tool_call["function"]["arguments"]
 
+                    # A. Execute the Python tool matching func_name
                     if func_name == "read_file":
-                        # A. Execute the Python tool
                         result = read_file(arguments["file_path"])
+                    elif func_name == "list_files":
+                        result = list_files(arguments.get("directory", "."))
+                    elif func_name == "search_code":
+                        result = search_code(arguments["query"])
+                    else:
+                        result = f"Error: Tool '{func_name}' is not supported."
 
-                        # B. Add the model's call request to history
-                        messages.append(
-                            {
-                                "role": "assistant",
-                                "content": message.get("content", ""),
-                                "tool_calls": [{"name": func_name, "args": arguments}],
-                            }
-                        )
-                        # C. Add the tool response to history
-                        messages.append(
-                            {"role": "tool", "content": result, "name": func_name}
-                        )
+                    # B. Add the model's call request to history
+                    messages.append(
+                        {
+                            "role": "assistant",
+                            "content": message.get("content", ""),
+                            "tool_calls": [{"name": func_name, "args": arguments}],
+                        }
+                    )
+                    # C. Add the tool response to history
+                    messages.append(
+                        {"role": "tool", "content": result, "name": func_name}
+                    )
 
-                        # D. Call again recursively with updated history to get final text
-                        return await generate_chat_response(
-                            model=model,
-                            messages=messages,
-                            system_instruction=system_instruction,
-                            temperature=temperature,
-                        )
+                    # D. Call again recursively with updated history to get final text
+                    return await generate_chat_response(
+                        model=model,
+                        messages=messages,
+                        system_instruction=system_instruction,
+                        temperature=temperature,
+                    )
 
             # If no tool was called, return the text content
             return message["content"]
@@ -298,9 +308,10 @@ async def _stream_gemini(
     if system_instruction:
         payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
-    async with httpx.AsyncClient(timeout=60.0) as client, client.stream(
-        "POST", url, json=payload
-    ) as response:
+    async with (
+        httpx.AsyncClient(timeout=60.0) as client,
+        client.stream("POST", url, json=payload) as response,
+    ):
         if response.status_code != 200:
             error_body = await response.aread()
             raise RuntimeError(
@@ -345,9 +356,10 @@ async def _stream_ollama(
         "keep_alive": OLLAMA_KEEP_ALIVE,
     }
 
-    async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client, client.stream(
-        "POST", url, json=payload
-    ) as response:
+    async with (
+        httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client,
+        client.stream("POST", url, json=payload) as response,
+    ):
         if response.status_code != 200:
             error_body = await response.aread()
             raise RuntimeError(

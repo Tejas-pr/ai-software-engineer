@@ -1,6 +1,5 @@
 # apps/api/app/tools/definitions.py
 
-# This schema matches standard OpenAPI definitions used by both Gemini and Ollama.
 READ_FILE_SCHEMA = {
     "type": "function",
     "function": {
@@ -11,7 +10,7 @@ READ_FILE_SCHEMA = {
             "properties": {
                 "file_path": {
                     "type": "string",
-                    "description": "The relative path to the file from the workspace root (e.g. 'package.json' or 'apps/api/app/main.py').",
+                    "description": "The relative path to the file from the workspace root.",
                 }
             },
             "required": ["file_path"],
@@ -19,4 +18,39 @@ READ_FILE_SCHEMA = {
     },
 }
 
-ALL_TOOLS = [READ_FILE_SCHEMA]
+LIST_FILES_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "list_files",
+        "description": "Lists the files inside a specific directory relative to the project workspace.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "directory": {
+                    "type": "string",
+                    "description": "The directory path to list files from (default is '.', the root directory).",
+                }
+            },
+        },
+    },
+}
+
+SEARCH_CODE_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "search_code",
+        "description": "Performs a global search inside the workspace code files to find occurrences of specific text query patterns.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The text pattern, function name, or class name to search for.",
+                }
+            },
+            "required": ["query"],
+        },
+    },
+}
+
+ALL_TOOLS = [READ_FILE_SCHEMA, LIST_FILES_SCHEMA, SEARCH_CODE_SCHEMA]
