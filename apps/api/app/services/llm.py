@@ -115,6 +115,7 @@ async def _generate_gemini(
             function_call = parts[0].get("functionCall")
             if function_call:
                 from app.tools.filesystem import list_files, read_file, search_code
+                from app.tools.terminal import run_command
 
                 func_name = function_call["name"]
                 arguments = function_call["args"]
@@ -126,6 +127,8 @@ async def _generate_gemini(
                     result = list_files(arguments.get("directory", "."))
                 elif func_name == "search_code":
                     result = search_code(arguments["query"])
+                elif func_name == "run_command":
+                    result = run_command(arguments["command"])
                 else:
                     result = f"Error: Tool '{func_name}' is not supported."
 
@@ -216,6 +219,7 @@ async def _generate_ollama(
             # --- TOOL INVOCATION CHECK ---
             if tool_calls:
                 from app.tools.filesystem import list_files, read_file, search_code
+                from app.tools.terminal import run_command
 
                 for tool_call in tool_calls:
                     func_name = tool_call["function"]["name"]
@@ -228,6 +232,8 @@ async def _generate_ollama(
                         result = list_files(arguments.get("directory", "."))
                     elif func_name == "search_code":
                         result = search_code(arguments["query"])
+                    elif func_name == "run_command":
+                        result = run_command(arguments["command"])
                     else:
                         result = f"Error: Tool '{func_name}' is not supported."
 

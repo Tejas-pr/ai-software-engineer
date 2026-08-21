@@ -53,4 +53,27 @@ SEARCH_CODE_SCHEMA = {
     },
 }
 
-ALL_TOOLS = [READ_FILE_SCHEMA, LIST_FILES_SCHEMA, SEARCH_CODE_SCHEMA]
+RUN_COMMAND_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "run_command",
+        "description": "Executes a shell command inside the project workspace directory and returns stdout and stderr.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "The exact shell command to run (e.g. 'pytest' or 'npm run build').",
+                }
+            },
+            "required": ["command"],
+        },
+    },
+}
+
+ALL_TOOLS = [
+    READ_FILE_SCHEMA,
+    LIST_FILES_SCHEMA,
+    SEARCH_CODE_SCHEMA,
+    RUN_COMMAND_SCHEMA,
+]
