@@ -1,4 +1,7 @@
 # apps/api/app/models/agent_run.py
+from typing import Any
+
+from sqlalchemy import JSON, Column
 from sqlmodel import Field
 
 from app.models.base import TimestampModel
@@ -17,9 +20,14 @@ class AgentRun(TimestampModel, table=True):
     user_id: int = Field(foreign_key="users.id", index=True)
     task: str
     model: str
+    skip_tests: bool = Field(default=False)
 
     # pending -> running -> (awaiting_approval -> running) -> completed | failed | rejected
     status: str = Field(default="pending", index=True)
+    # The plan waiting on human approval — set when status flips to
+    # "awaiting_approval", so it survives a page reload (the graph's own
+    # in-flight state doesn't outlive the interrupted request).
+    pending_plan: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     review_notes: str | None = None
     pr_url: str | None = None
     error: str | None = None

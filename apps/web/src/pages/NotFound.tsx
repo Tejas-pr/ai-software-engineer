@@ -36,7 +36,7 @@ export function NotFound() {
         <Button
           render={<Link to="/" />}
           size="lg"
-          className="rounded-lg shadow-sm"
+          className="h-9 cursor-pointer gap-2 rounded-lg py-4 font-semibold shadow-sm"
         >
           Go back home
         </Button>

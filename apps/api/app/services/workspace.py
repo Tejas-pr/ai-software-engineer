@@ -38,5 +38,12 @@ def clone_repository(github_url: str, branch: str, token: str, project_id: int) 
         check=False,
     )
     if result.returncode != 0:
-        # git echoes the auth_url (with token) into stderr on failure — strip it.
-        raise RuntimeError(f"git clone failed: {result.stderr.replace(token, '***')}")
+        stderr = result.stderr.replace(
+            token, "***"
+        )  # git echoes the auth URL on failure
+        if "Remote branch" in stderr and "not found" in stderr:
+            raise RuntimeError(
+                f"Branch '{branch}' not found — this repo may be empty "
+                "(push at least one commit before connecting it)."
+            )
+        raise RuntimeError(f"git clone failed: {stderr}")

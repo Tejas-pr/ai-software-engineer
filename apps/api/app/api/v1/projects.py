@@ -50,16 +50,28 @@ def create_project(
     token: Annotated[str, Depends(get_github_token)],
     session: Session = Depends(get_session),
 ):
-    """Connects a GitHub repo: creates the Project row, clones it in the background."""
+    """Connects a GitHub repo — clones it in the background.
+
+    Reuses the existing `Project` row for this (user, github_url) if one
+    already exists, instead of creating a duplicate every time the same
+    repo is connected again. This doubles as the retry path: reconnecting
+    a previously-failed clone (e.g. the repo was empty and has since had a
+    commit pushed to it) just re-clones onto the same row.
+    """
     owner, repo = parse_github_url(body.github_url)
-    project = Project(
-        user_id=current_user.id,
-        name=body.name or f"{owner}/{repo}",
-        github_url=body.github_url,
-        branch=body.branch,
-        description=body.description,
-        status="pending",
+    statement = select(Project).where(
+        Project.user_id == current_user.id, Project.github_url == body.github_url
     )
+    project = session.exec(statement).first()
+
+    if project is None:
+        project = Project(user_id=current_user.id, github_url=body.github_url)
+
+    project.name = body.name or f"{owner}/{repo}"
+    project.branch = body.branch
+    project.description = body.description
+    project.status = "pending"
+
     session.add(project)
     session.commit()
     session.refresh(project)

@@ -20,6 +20,7 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 from app.config import settings
+from app.services.user_api_keys import get_user_api_key
 
 # Model name -> (provider check, builder). Checked in order; first match
 # wins. Ollama has no prefix check — it's the catch-all for local dev, since
@@ -30,9 +31,15 @@ _PROVIDERS: list[tuple[str, list[str], str]] = [
     ("gpt", settings.OPENAI_MODELS, "OPENAI_API_KEY"),
 ]
 
+# The BYOK-able providers (Settings page) — Ollama is deliberately absent,
+# it's always local/keyless.
+KNOWN_PROVIDERS = tuple(prefix for prefix, _, _ in _PROVIDERS)
 
-@lru_cache(maxsize=16)
-def get_chat_model(model: str, temperature: float = 0.0) -> BaseChatModel:
+
+@lru_cache(maxsize=64)
+def get_chat_model(
+    model: str, temperature: float = 0.0, user_id: int | None = None
+) -> BaseChatModel:
     """Return a LangChain chat model for `model`, routed by provider.
 
     This is the adapter: every node in the agent graph talks to
@@ -40,25 +47,39 @@ def get_chat_model(model: str, temperature: float = 0.0) -> BaseChatModel:
     Gemini for Claude/GPT/a local Ollama model is a matter of changing the
     `model` string the user picked — no other code changes.
 
-    Cached per (model, temperature) pair so repeated calls within a run reuse
-    the same client instead of reconnecting.
+    Key resolution: the user's own BYOK key (Settings page) first, falling
+    back to the platform's `.env` key if they haven't set one — nothing
+    breaks for anyone who never touches Settings.
+
+    Cached per (model, temperature, user_id) so repeated calls within a run
+    reuse the same client instead of reconnecting.
     """
     model_lower = model.lower()
 
     for prefix, known_models, key_setting in _PROVIDERS:
         if model_lower.startswith(prefix) or model in known_models:
-            api_key = getattr(settings, key_setting)
+            user_key = get_user_api_key(user_id, prefix) if user_id else None
+            api_key: str = user_key or getattr(settings, key_setting)
             if not api_key:
-                raise ValueError(f"{key_setting} is not configured in settings.")
+                raise ValueError(
+                    f"No {prefix} API key available — add your own on the Settings "
+                    f"page, or configure {key_setting} on the server."
+                )
             if prefix == "gemini":
                 return ChatGoogleGenerativeAI(
                     model=model, api_key=api_key, temperature=temperature
                 )
             if prefix == "claude":
                 return ChatAnthropic(  # type: ignore[call-arg]
-                    model=model, api_key=api_key, temperature=temperature
+                    model=model,
+                    api_key=api_key,  # type: ignore[arg-type]
+                    temperature=temperature,
                 )
-            return ChatOpenAI(model=model, api_key=api_key, temperature=temperature)
+            return ChatOpenAI(
+                model=model,
+                api_key=api_key,  # type: ignore[arg-type]
+                temperature=temperature,
+            )
 
     # Catch-all: local Ollama model.
     return ChatOllama(

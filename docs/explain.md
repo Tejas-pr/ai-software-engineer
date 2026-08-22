@@ -6,10 +6,11 @@ someone else (interview, resume, demo) without re-reading the code.
 ## One-sentence version
 
 An autonomous AI software engineering platform: connect a GitHub repo, give
-it a task, and a LangGraph-orchestrated team of specialized agents
-(researcher, planner, coder, tester, reviewer) reads the codebase, plans the
-change, edits files, runs tests, self-corrects on failure, and opens a pull
-request — all on real repos, real LLMs, real Postgres, no mocks.
+it a task (or pick a real GitHub issue), and a LangGraph-orchestrated team
+of specialized agents (researcher, planner, coder, tester, reviewer) reads
+the codebase, plans the change, pauses for your approval, edits files, runs
+tests, self-corrects on failure, and opens a pull request — watchable live
+in the browser — all on real repos, real LLMs, real Postgres, no mocks.
 
 ## Architecture
 
@@ -134,18 +135,33 @@ unrelated one — proof the embeddings capture *meaning*, not keyword overlap.
   with the failure output appended to its prompt, up to
   `MAX_REPAIR_ATTEMPTS = 3`; then give up gracefully and let the reviewer
   report it honestly rather than looping forever.
+- **human_approval** — sits between planner and coder. Calls LangGraph's
+  `interrupt({"plan": ..., "task": ...})`, which suspends the graph right
+  there; the function doesn't return until a later, separate call resumes
+  it with `Command(resume=...)`. Routes to `coder` if approved, straight to
+  `END` if rejected — a rejected plan never reaches the coder at all.
 - **reviewer** — summarizes the outcome (files changed, attempts taken,
   pass/fail) into `review_notes`.
+- **github** — the final node. Creates a branch, commits, pushes, opens a
+  PR — but only if `tester` actually passed; a failed run reports itself
+  honestly through `reviewer` instead of pushing broken code.
 - **Live status** — every node calls `get_stream_writer()({"agent": ...,
   "status": "running", "detail": ...})` on entry. Combined with
   `stream_mode=["custom", "updates"]`, a consumer gets *both* "agent X just
-  started" and "agent X just finished with this result" events — the data
-  feed the (planned) six-box live dashboard is built on.
-- **Checkpointer** — `MemorySaver` for now. LangGraph checkpoints state
-  after every node so a run can be paused/inspected/resumed; a Postgres
-  checkpointer (`langgraph-checkpoint-postgres`, already installed) upgrades
-  this to survive across separate HTTP requests, which only matters once
-  there's a human-approval pause to resume from.
+  started" and "agent X just finished with this result" events — that's
+  the exact data feed the frontend's live status boxes run on.
+- **Checkpointer** — `PostgresSaver` (`app/agents/checkpointer.py`): one
+  `ConnectionPool` + `PostgresSaver`, its own tables (`checkpoints`,
+  `checkpoint_blobs`, `checkpoint_writes`), separate from SQLModel's
+  migrations. This is what makes `human_approval`'s interrupt actually
+  survive: the HTTP request that hits it ends, and the approval click is a
+  genuinely separate request — sometimes a different thread, sometimes
+  much later. Only a checkpoint persisted outside process memory bridges
+  that gap. Verified with two fully independent `compile_graph()` calls
+  (standing in for two separate HTTP requests) linked only by the Postgres
+  checkpoint — reject correctly leaves the repo untouched and ends the
+  graph at `human_approval`; approve correctly resumes into `coder` and
+  the rest of the pipeline (`apps/api/tests/test_m4_approval.py`).
 
 **Proven, not asserted**: an end-to-end test hands the graph a real
 one-line bug (`add()` returning `a - b`) and a failing test, on a real LLM
@@ -169,6 +185,51 @@ observed working (`apps/api/tests/test_m3_graph.py`).
   `asyncio.run_coroutine_threadsafe` — the standard bridge pattern for
   "sync work, async delivery" instead of blocking every other request for
   the run's whole duration.
+- `POST /api/v1/agent/runs/{id}/approve` — resumes a paused run via
+  `Command(resume={"approved": bool, "feedback": ...})`. It's *also* an SSE
+  stream (same shape, same bridge pattern) covering execution from the
+  approval point to the end — the frontend just opens a second stream after
+  the first one ends at the interrupt.
+
+## Frontend
+
+Two pages — no new UI library, reuses the existing card/select styling
+verbatim. This is a redesign from an original single-page version, done
+after actually using it: connecting the same repo twice silently created
+duplicate rows with no way to retry a failed one, and mixing "pick a repo"
+with "run the agent" on one page made a failed connection a dead end.
+
+- **`RepoList.tsx`** (`/`, the post-login landing page) — every connected
+  repo with its status; `ready` gets an "Open" button straight through to
+  its detail page, `failed` gets a "Retry" button right there (no re-typing
+  anything). A "+ Connect a GitHub repo" section lists repos from
+  `GET /github/repos` that aren't connected yet.
+- **`ProjectDetail.tsx`** (`/projects/{id}`) — everything scoped to one
+  repo: pick an issue (with a manual refresh — no full-page reload needed
+  to see an issue you just pushed) or write a task, pick a model, hit Run.
+  `POST /agent/runs` then immediately opens the SSE stream. One status box
+  per graph node (7, matching the actual graph —
+  researcher/planner/human_approval/coder/tester/reviewer/github), each
+  showing idle/running/done/error driven by the `custom` stream events. An
+  `interrupt` event swaps in the approval panel (the plan, rendered
+  directly from the interrupt payload); Approve/Reject call `/approve`,
+  whose response is consumed by the exact same event-reading loop
+  (`readAgentStream` in `agent.api.ts`, a small async generator that parses
+  `data: {...}\n\n` frames) — one code path handles both the initial run
+  and the resumed one. Run history here is filtered to this project.
+
+The duplicate-row problem was fixed at the backend, not papered over in the
+UI: `POST /projects` now looks up an existing `(user, github_url)` row
+first and reuses it. Connecting an already-connected repo just re-clones
+onto the same row — which is also what makes "Retry" possible at all.
+
+Verified in a real headless browser (no `chromium-cli` in this
+environment, so a throwaway Playwright driver script instead): the actual
+page against the actual backend, zero console errors. That check caught a
+real bug — the "connect a repo" button was failing silently on an API
+error instead of telling the user anything — fixed on the spot. A second
+pass mocked the SSE stream (no LLM calls needed) to confirm the status
+dots and approval panel render correctly with real event shapes.
 
 ## Auth & security decisions worth naming explicitly
 

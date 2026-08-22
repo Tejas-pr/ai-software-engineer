@@ -46,9 +46,13 @@ class AgentState(TypedDict, total=False):
     user_id: int
     workspace_path: str
     model: str
+    skip_tests: bool  # user opted out of the tester step for this run
 
     # Filled in as the graph progresses.
     research_notes: str
+    detected_stack: (
+        str  # deterministically parsed, not LLM-discovered — see tech_stack.py
+    )
     plan: dict  # Plan.model_dump()
     files_changed: list[str]
     test_output: str
@@ -56,4 +60,7 @@ class AgentState(TypedDict, total=False):
     repair_attempts: int
     review_notes: str
     approved: bool  # set by the human-in-the-loop node, M4
+    # Set on rejection with feedback text; routes back to planner to revise
+    # instead of ending the run. Cleared once the planner consumes it.
+    plan_feedback: str | None
     pr_url: str  # set by the github node, M5

@@ -11,6 +11,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.github import router as github_router
 from app.api.v1.projects import router as projects_router
+from app.api.v1.settings import router as settings_router
 from app.api.v1.system import router as system_router
 from app.config import settings
 from app.db import get_session
@@ -64,6 +65,7 @@ api_v1_router.include_router(chat_router)
 api_v1_router.include_router(github_router)
 api_v1_router.include_router(projects_router)
 api_v1_router.include_router(agent_router)
+api_v1_router.include_router(settings_router)
 
 # Include the versioned router in the main FastAPI app
 app.include_router(api_v1_router)
