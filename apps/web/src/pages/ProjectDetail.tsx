@@ -19,6 +19,7 @@ import {
   getRun,
   listRuns,
   readAgentStream,
+  retryRun,
   streamRun,
   type AgentRun,
   type Plan,
@@ -43,12 +44,6 @@ const ALL_CLOUD_MODELS = [
     provider: "claude",
   },
   { id: "gpt-5.1", name: "GPT-5.1", provider: "gpt" },
-]
-
-// Local Ollama models — always available, no key needed.
-const LOCAL_MODELS = [
-  { id: "qwen2.5-coder:7b", name: "Qwen 2.5 Coder 7B", provider: "local" },
-  { id: "deepseek-r1:8b", name: "DeepSeek R1 8B", provider: "local" },
 ]
 
 type KeySource = "my-key" | "platform"
@@ -160,6 +155,9 @@ export function ProjectDetailPage() {
   const [skipTests, setSkipTests] = useState(false)
   const [setupError, setSetupError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
+  // Distinct from `retrying` above (project reconnect) — this is for
+  // retrying a failed *run* from its last checkpoint via POST .../retry.
+  const [retryingRun, setRetryingRun] = useState(false)
 
   // Key-source toggle state and available providers fetched from backend.
   const [availableModels, setAvailableModels] =
@@ -183,12 +181,26 @@ export function ProjectDetailPage() {
       )
     : new Set()
 
+  // Local Ollama models — fetched live from the backend (which queries
+  // Ollama's own `/api/tags`, see app/services/ollama.py), not a
+  // hardcoded list, so whatever's actually pulled on this machine shows
+  // up automatically. Whichever one the backend judged the best fit for
+  // the Coder step (see recommend_coding_model) is flagged and sorted first.
+  const localModels = (availableModels?.local_models ?? [])
+    .map((m) => ({
+      id: m.id,
+      name: m.parameter_size ? `${m.id} (${m.parameter_size})` : m.id,
+      provider: "local" as const,
+      recommended: m.id === availableModels?.recommended_coding_model,
+    }))
+    .sort((a, b) => Number(b.recommended) - Number(a.recommended))
+
   // Cloud models reachable under current toggle + always-on local models.
   const visibleModels = [
     ...ALL_CLOUD_MODELS.filter((m) => activeProviders.has(m.provider)).map(
-      (m) => ({ ...m, group: "Cloud" as const })
+      (m) => ({ ...m, group: "Cloud" as const, recommended: false })
     ),
-    ...LOCAL_MODELS.map((m) => ({ ...m, group: "Local" as const })),
+    ...localModels.map((m) => ({ ...m, group: "Local" as const })),
   ]
 
   const refreshIssues = () => {
@@ -312,6 +324,18 @@ export function ProjectDetailPage() {
     )
     setFeedback("")
     consumeStream(response, run.id)
+  }
+
+  const handleRetryRun = async () => {
+    if (!run || run.status !== "failed") return
+    setRetryingRun(true)
+    setRun({ ...run, status: "running", error: null })
+    try {
+      const response = await retryRun(run.id)
+      await consumeStream(response, run.id)
+    } finally {
+      setRetryingRun(false)
+    }
   }
 
   const canRun =
@@ -492,12 +516,12 @@ export function ProjectDetailPage() {
                           ALL_CLOUD_MODELS.some(
                             (m) =>
                               m.id === model && providers.includes(m.provider)
-                          ) || LOCAL_MODELS.some((m) => m.id === model)
+                          ) || localModels.some((m) => m.id === model)
                         if (!stillVisible) {
                           const first = ALL_CLOUD_MODELS.find((m) =>
                             providers.includes(m.provider)
                           )
-                          setModel(first?.id ?? LOCAL_MODELS[0]?.id ?? model)
+                          setModel(first?.id ?? localModels[0]?.id ?? model)
                         }
                       }}
                       className={`cursor-pointer rounded-full px-3 py-1 transition-colors ${
@@ -518,12 +542,12 @@ export function ProjectDetailPage() {
                           ALL_CLOUD_MODELS.some(
                             (m) =>
                               m.id === model && providers.includes(m.provider)
-                          ) || LOCAL_MODELS.some((m) => m.id === model)
+                          ) || localModels.some((m) => m.id === model)
                         if (!stillVisible) {
                           const first = ALL_CLOUD_MODELS.find((m) =>
                             providers.includes(m.provider)
                           )
-                          setModel(first?.id ?? LOCAL_MODELS[0]?.id ?? model)
+                          setModel(first?.id ?? localModels[0]?.id ?? model)
                         }
                       }}
                       className={`cursor-pointer rounded-full px-3 py-1 transition-colors ${
@@ -559,7 +583,15 @@ export function ProjectDetailPage() {
                             {visibleModels.map((m) => (
                               <SelectItem key={m.id} value={m.id}>
                                 <span>{m.name}</span>
-                                <span className="ml-auto pl-4 text-[10px] text-muted-foreground">
+                                <span className="ml-auto flex items-center gap-1.5 pl-4 text-[10px] text-muted-foreground">
+                                  {m.recommended && (
+                                    <span
+                                      title="Best fit for coding among your installed local models"
+                                      className="rounded-full bg-primary/10 px-1.5 py-0.5 font-semibold text-primary"
+                                    >
+                                      Recommended
+                                    </span>
+                                  )}
                                   {m.group}
                                 </span>
                               </SelectItem>
@@ -707,6 +739,17 @@ export function ProjectDetailPage() {
                     )}
                     {run.error && (
                       <p className="text-sm text-destructive">{run.error}</p>
+                    )}
+                    {run.status === "failed" && (
+                      <Button
+                        onClick={handleRetryRun}
+                        disabled={retryingRun}
+                        size="sm"
+                        variant="outline"
+                        className="mt-2"
+                      >
+                        {retryingRun ? "Retrying…" : "Retry from last step"}
+                      </Button>
                     )}
                   </div>
                 )}

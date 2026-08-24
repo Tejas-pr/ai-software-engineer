@@ -1,3 +1,6 @@
+import uuid
+
+from sqlalchemy import Column, Uuid
 from sqlmodel import Field
 
 from app.models.base import TimestampModel
@@ -15,3 +18,11 @@ class Project(TimestampModel, table=True):
 
     # pending -> ready | failed, set once the initial clone finishes.
     status: str = Field(default="pending")
+
+    # The workspace directory on disk is named by this, not `id` — an
+    # unguessable, non-enumerable name for what's otherwise a plain
+    # sequential integer (see app/services/workspace.py's workspace_path).
+    workspace_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        sa_column=Column(Uuid(as_uuid=True), nullable=False, unique=True, index=True),
+    )

@@ -9,10 +9,22 @@ export interface ApiKeyStatus {
   updated_at: string | null
 }
 
+export interface LocalModel {
+  id: string
+  size_gb: number | null
+  parameter_size: string | null
+  family: string | null
+}
+
 export interface AvailableModels {
   user_providers: string[]
   platform_providers: string[]
-  local_models: string[]
+  // Ollama models actually installed on this machine right now (queried
+  // live — see app/services/ollama.py), not a hardcoded list.
+  local_models: LocalModel[]
+  // Whichever installed local model is the best fit for the Coder step,
+  // or null if none are installed / Ollama isn't reachable.
+  recommended_coding_model: string | null
 }
 
 export async function listApiKeys(): Promise<ApiKeyStatus[]> {

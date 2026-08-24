@@ -21,7 +21,10 @@ from app.tools.filesystem import list_files, read_file, search_code, write_file
 from app.tools.terminal import run_command
 
 # Real project builds/tests can run well past the chat console's 15s default.
-AGENT_COMMAND_TIMEOUT = 120.0
+# Local CPU-only model inference plus a cold `npm install`/build can easily
+# eat several minutes on its own — 120s was tripping on legitimately slow
+# (not stuck) commands, not just runaway ones.
+AGENT_COMMAND_TIMEOUT = 300.0
 
 
 def make_read_only_tools(workspace_root: Path) -> list[BaseTool]:

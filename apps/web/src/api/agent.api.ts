@@ -91,6 +91,18 @@ export function approveRun(
   })
 }
 
+/** Retries a `failed` run from wherever it actually stopped (LangGraph's
+ * checkpoint), instead of restarting the whole pipeline — e.g. everything
+ * through Reviewer already succeeded and only the GitHub step blew up.
+ * Also an SSE stream, same event shape as streamRun. Does NOT reset the
+ * workspace — keeps whatever the coder already built. */
+export function retryRun(id: number): Promise<Response> {
+  return fetch(`${baseURL}${API_ENDPOINTS.AGENT_RUN_RETRY(id)}`, {
+    method: "POST",
+    credentials: "include",
+  })
+}
+
 /** Parses a `text/event-stream` body of `data: {...}\n\n` frames into
  * typed events, one at a time, as they arrive. */
 export async function* readAgentStream(

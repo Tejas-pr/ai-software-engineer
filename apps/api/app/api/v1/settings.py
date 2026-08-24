@@ -75,14 +75,21 @@ def get_available_models(
 
     - ``user_providers``: providers where the user has a BYOK key stored.
     - ``platform_providers``: providers where a platform .env key is configured.
-    - ``local_models``: Ollama models (always available, no key required).
+    - ``local_models``: Ollama models actually installed on this machine
+      right now (queried live from Ollama, not the static `.env` list —
+      see `app/services/ollama.py`), always available, no key required.
+    - ``recommended_coding_model``: whichever installed local model is the
+      best fit for the Coder step specifically, or null if none are
+      installed / Ollama isn't reachable.
 
     The frontend uses this to:
     1. Show a toggle (my key vs platform).
     2. Filter the model picker to only reachable models.
+    3. Populate the local-model dropdown and flag the recommended one.
     """
     from app.agents.llm import _PROVIDERS
     from app.config import settings as app_settings
+    from app.services.ollama import list_local_ollama_models, recommend_coding_model
 
     rows = session.exec(
         select(UserApiKey).where(UserApiKey.user_id == current_user.id)
@@ -95,10 +102,13 @@ def get_available_models(
         if getattr(app_settings, key_setting, "")
     }
 
+    local_models = list_local_ollama_models()
+
     return {
         "user_providers": sorted(user_providers),
         "platform_providers": sorted(platform_providers),
-        "local_models": app_settings.OLLAMA_MODELS,
+        "local_models": local_models,
+        "recommended_coding_model": recommend_coding_model(local_models),
     }
 
 

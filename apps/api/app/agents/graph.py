@@ -39,6 +39,7 @@ from app.agents.llm import get_chat_model
 from app.agents.state import AgentState, Plan
 from app.agents.tech_stack import detect_tech_stack
 from app.agents.tools import (
+    AGENT_COMMAND_TIMEOUT,
     make_read_only_tools,
     make_search_codebase_tool,
     make_workspace_tools,
@@ -222,6 +223,27 @@ def coder_node(state: AgentState) -> dict:
     summary = result["messages"][-1].content
     _emit("coder", "done", summary[:200])
     files_changed = sorted({f for s in plan["steps"] for f in s["files"]})
+
+    # `files_changed` above is only the plan's *declared* file list — not
+    # proof anything actually landed on disk (see docs/live-run-plan.md).
+    # Confirmed real gap, twice: some local models (qwen2.5-coder 7b *and*
+    # 14b) end their turn narrating a tool call as plain text instead of
+    # ever invoking `write_file_tool`, leaving the workspace completely
+    # untouched while still producing a normal-looking summary message.
+    # Catch that here, immediately — instead of letting Tester (possibly
+    # skipped)/Reviewer (which trusts `files_changed` blindly) run against
+    # nothing, only for it to surface several steps later as a confusing
+    # GitHub-side failure in `commit_and_push`.
+    status = run_command("git status --porcelain", workspace_root=workspace)
+    if status.startswith("Command executed successfully"):  # i.e. no output
+        raise RuntimeError(
+            "The coder made no actual file changes — it finished without "
+            "ever calling a write tool. Its final message was: "
+            f"{summary[:300]!r}. This is a known reliability gap with some "
+            "local models (they narrate a write instead of calling the "
+            "tool) — a cloud model (Gemini/Claude/GPT) is far more "
+            "reliable at actually invoking tools."
+        )
     return {"files_changed": files_changed}
 
 
@@ -237,7 +259,9 @@ def tester_node(state: AgentState) -> dict:
     _emit("tester", "running", f"Running: {state['plan']['test_command']}")
     workspace = Path(state["workspace_path"])
     output = run_command(
-        state["plan"]["test_command"], workspace_root=workspace, timeout=120.0
+        state["plan"]["test_command"],
+        workspace_root=workspace,
+        timeout=AGENT_COMMAND_TIMEOUT,
     )
     passed = (
         output.startswith("Exit Code: 0") or "Command executed successfully" in output
@@ -285,7 +309,9 @@ def github_node(state: AgentState) -> dict:
     workspace = Path(state["workspace_path"])
 
     create_branch(workspace, branch_name)
-    commit_and_push(workspace, branch_name, f"AI agent: {state['task'][:72]}", token)
+    commit_and_push(
+        workspace, branch_name, f"AI agent: {state['task'][:72]}", token, project.branch
+    )
 
     import asyncio
 

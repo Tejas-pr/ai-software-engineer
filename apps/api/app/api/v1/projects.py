@@ -6,11 +6,13 @@ from sqlmodel import Session, select
 
 from app.api.deps import get_current_user, get_github_token
 from app.db import get_session
+from app.models.agent_run import AgentRun
+from app.models.document_chunk import DocumentChunk
 from app.models.project import Project
 from app.models.user import User
 from app.rag.ingestion import ingest_project
 from app.services.github_api import list_repo_issues, parse_github_url
-from app.services.workspace import clone_repository, workspace_path
+from app.services.workspace import clone_repository, delete_workspace, workspace_path
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -33,7 +35,7 @@ def _clone_and_update_status(
         if project is None:
             return
         try:
-            clone_repository(github_url, branch, token, project_id)
+            clone_repository(github_url, branch, token, project.workspace_id)
             project.status = "ready"
         except Exception as e:  # noqa: BLE001
             project.status = "failed"
@@ -58,6 +60,7 @@ def create_project(
     a previously-failed clone (e.g. the repo was empty and has since had a
     commit pushed to it) just re-clones onto the same row.
     """
+    assert current_user.id is not None  # authenticated users are always persisted
     owner, repo = parse_github_url(body.github_url)
     statement = select(Project).where(
         Project.user_id == current_user.id, Project.github_url == body.github_url
@@ -110,6 +113,40 @@ def get_project(
     return _get_owned_project(project_id, current_user, session)
 
 
+@router.delete("/{project_id}", status_code=204)
+def delete_project(
+    project_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Session = Depends(get_session),
+):
+    """Disconnects a project: deletes its DB rows and its cloned workspace
+    on disk. The workspace directory is otherwise reused forever across
+    runs (see `workspace.py`) — this is the only point it's actually
+    removed, so disconnected projects don't just sit there filling up disk.
+    """
+    project = _get_owned_project(project_id, current_user, session)
+    # Captured before delete: the ORM instance expires once its row (and
+    # this session's transaction) is gone, so reading it after commit would
+    # error.
+    workspace_id = project.workspace_id
+
+    # No FK cascade configured on these — clear dependents first or the
+    # Project delete below hits a ForeignKeyViolation.
+    for run in session.exec(
+        select(AgentRun).where(AgentRun.project_id == project_id)
+    ).all():
+        session.delete(run)
+    for chunk in session.exec(
+        select(DocumentChunk).where(DocumentChunk.project_id == project_id)
+    ).all():
+        session.delete(chunk)
+
+    session.delete(project)
+    session.commit()
+
+    delete_workspace(workspace_path(workspace_id))
+
+
 def _index_project(project_id: int) -> None:
     """Runs in the background after the API has already responded."""
     from app.db import engine  # local import: background task builds its own session
@@ -118,7 +155,7 @@ def _index_project(project_id: int) -> None:
         project = session.get(Project, project_id)
         if project is None or project.status != "ready":
             return
-        ingest_project(session, project_id, workspace_path(project_id))
+        ingest_project(session, project_id, workspace_path(project.workspace_id))
 
 
 @router.post("/{project_id}/index")
