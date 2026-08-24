@@ -58,6 +58,7 @@ def create_run(
             status_code=409, detail=f"Project is '{project.status}', not ready to run"
         )
     assert project.id is not None  # committed rows always have one
+    assert current_user.id is not None  # authenticated users are always persisted
 
     run = AgentRun(
         project_id=project.id,
