@@ -23,8 +23,11 @@ Only a checkpoint persisted outside process memory survives that gap.
 
 import re
 import uuid
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from pathlib import Path
-from typing import cast
+from typing import TypeVar, cast
 
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -44,6 +47,7 @@ from app.agents.tools import (
     make_search_codebase_tool,
     make_workspace_tools,
 )
+from app.config import settings
 from app.db import engine
 from app.models.project import Project
 from app.models.user import User
@@ -53,6 +57,15 @@ from app.utils.crypto import decrypt_token
 
 MAX_REPAIR_ATTEMPTS = 3
 AGENT_LOOP_STEP_LIMIT = 25  # guards against a runaway tool-calling loop
+
+T = TypeVar("T")
+
+
+def run_with_timeout[T](func: Callable[[], T], timeout_seconds: float) -> T:
+    """Executes a function on a background thread with a strict time limit."""
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(func)
+        return future.result(timeout=timeout_seconds)
 
 
 def _emit(agent: str, status: str, detail: str = "") -> None:
@@ -83,24 +96,40 @@ def researcher_node(state: AgentState) -> dict:
             "never contradict it or substitute a generic guess."
         ),
     )
-    result = agent.invoke(
-        {
-            "messages": [
-                HumanMessage(
-                    f"Verified tech stack (from the project's own manifest file — "
-                    f"treat this as ground truth): {detected_stack}\n\n"
-                    f"Task: {state['task']}\n\n"
-                    "Explore the repository (list files, search code, read the "
-                    "relevant ones) and summarize: the project's structure, "
-                    "conventions, and exactly which files/areas this task will touch. "
-                    "Start your summary by restating the verified tech stack above."
-                ),
-            ]
-        },
-        {"recursion_limit": AGENT_LOOP_STEP_LIMIT},
-    )
-    notes = result["messages"][-1].content
-    _emit("researcher", "done", notes[:200])
+
+    try:
+        result = run_with_timeout(
+            lambda: agent.invoke(
+                {
+                    "messages": [
+                        HumanMessage(
+                            f"Verified tech stack (from the project's own manifest file — "
+                            f"treat this as ground truth): {detected_stack}\n\n"
+                            f"Task: {state['task']}\n\n"
+                            "Explore the repository (list files, search code, read the "
+                            "relevant ones) and summarize: the project's structure, "
+                            "conventions, and exactly which files/areas this task will touch. "
+                            "Start your summary by restating the verified tech stack above."
+                        ),
+                    ]
+                },
+                {"recursion_limit": AGENT_LOOP_STEP_LIMIT},
+            ),
+            timeout_seconds=settings.AGENT_STEP_TIMEOUT_SECONDS,
+        )
+        notes = result["messages"][-1].content
+        _emit("researcher", "done", notes[:200])
+    except FutureTimeoutError:
+        notes = (
+            f"Research step reached {settings.AGENT_STEP_TIMEOUT_SECONDS}s time limit. "
+            f"Proceeding with detected tech stack: {detected_stack}."
+        )
+        _emit(
+            "researcher",
+            "done",
+            f"Time limit ({settings.AGENT_STEP_TIMEOUT_SECONDS}s) reached — moving to planner.",
+        )
+
     return {"research_notes": notes, "detected_stack": detected_stack}
 
 
@@ -209,33 +238,58 @@ def coder_node(state: AgentState) -> dict:
 
     plan = state["plan"]
     steps_text = "\n".join(f"- {s['description']}" for s in plan["steps"])
-    result = agent.invoke(
-        {
-            "messages": [
-                HumanMessage(
-                    f"Task: {state['task']}\n\nPlan:\n{plan['summary']}\n{steps_text}"
-                    f"{repair_note}{approval_note}"
-                ),
-            ]
-        },
-        {"recursion_limit": AGENT_LOOP_STEP_LIMIT},
-    )
-    summary = result["messages"][-1].content
-    _emit("coder", "done", summary[:200])
+    timed_out = False
+
+    try:
+        result = run_with_timeout(
+            lambda: agent.invoke(
+                {
+                    "messages": [
+                        HumanMessage(
+                            f"Task: {state['task']}\n\nPlan:\n{plan['summary']}\n{steps_text}"
+                            f"{repair_note}{approval_note}"
+                        ),
+                    ]
+                },
+                {"recursion_limit": AGENT_LOOP_STEP_LIMIT},
+            ),
+            timeout_seconds=settings.AGENT_STEP_TIMEOUT_SECONDS,
+        )
+        summary = result["messages"][-1].content
+        _emit("coder", "done", summary[:200])
+    except FutureTimeoutError:
+        timed_out = True
+        summary = (
+            f"Coder step reached {settings.AGENT_STEP_TIMEOUT_SECONDS}s time limit."
+        )
+        _emit(
+            "coder",
+            "running",
+            f"Time limit ({settings.AGENT_STEP_TIMEOUT_SECONDS}s) reached — checking file changes...",
+        )
+
     files_changed = sorted({f for s in plan["steps"] for f in s["files"]})
 
-    # `files_changed` above is only the plan's *declared* file list — not
-    # proof anything actually landed on disk (see docs/live-run-plan.md).
-    # Confirmed real gap, twice: some local models (qwen2.5-coder 7b *and*
-    # 14b) end their turn narrating a tool call as plain text instead of
-    # ever invoking `write_file_tool`, leaving the workspace completely
-    # untouched while still producing a normal-looking summary message.
-    # Catch that here, immediately — instead of letting Tester (possibly
-    # skipped)/Reviewer (which trusts `files_changed` blindly) run against
-    # nothing, only for it to surface several steps later as a confusing
-    # GitHub-side failure in `commit_and_push`.
+    # Check whether any changes actually landed on disk
     status = run_command("git status --porcelain", workspace_root=workspace)
-    if status.startswith("Command executed successfully"):  # i.e. no output
+    has_changes = not status.startswith("Command executed successfully") and bool(
+        status.strip()
+    )
+
+    if timed_out:
+        if has_changes:
+            _emit(
+                "coder",
+                "done",
+                f"Time limit reached ({settings.AGENT_STEP_TIMEOUT_SECONDS}s) — proceeding with generated changes.",
+            )
+            return {"files_changed": files_changed}
+        raise RuntimeError(
+            f"Coder step reached time limit ({settings.AGENT_STEP_TIMEOUT_SECONDS}s) "
+            "before any file changes were written to the workspace."
+        )
+
+    if not has_changes:
         raise RuntimeError(
             "The coder made no actual file changes — it finished without "
             "ever calling a write tool. Its final message was: "

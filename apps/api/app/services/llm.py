@@ -212,6 +212,10 @@ async def _generate_ollama(
             )
 
         data = response.json()
+        if "prompt_eval_count" in data or "eval_count" in data:
+            print(f"\033[1;36mPrompt Tokens: {data.get('prompt_eval_count')}\033[0m")
+            print(f"\033[1;32mResponse Tokens: {data.get('eval_count')}\033[0m")
+
         try:
             message = data.get("message", {})
             tool_calls = message.get("tool_calls")
@@ -376,6 +380,15 @@ async def _stream_ollama(
             if line:
                 try:
                     data = json.loads(line)
+                    if data.get("done") and (
+                        "prompt_eval_count" in data or "eval_count" in data
+                    ):
+                        print(
+                            f"\033[1;36mPrompt Tokens: {data.get('prompt_eval_count')}\033[0m"
+                        )
+                        print(
+                            f"\033[1;32mResponse Tokens: {data.get('eval_count')}\033[0m"
+                        )
                     content = data.get("message", {}).get("content", "")
                     if content:
                         yield content

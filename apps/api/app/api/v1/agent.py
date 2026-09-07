@@ -218,6 +218,13 @@ def _run_graph_in_thread(
             for mode, payload in graph.stream(
                 graph_input, config, stream_mode=["custom", "updates"]
             ):
+                # Check if cancellation was requested by user
+                if redis_client.get(f"run:{run_id}:cancelled"):
+                    run.status = "failed"
+                    run.error = "Run was stopped by user."
+                    emit({"mode": "error", "payload": "Run was stopped by user."})
+                    break
+
                 if mode == "updates" and "__interrupt__" in payload:
                     interrupted = True
                     interrupt_value = payload["__interrupt__"][0].value
@@ -227,7 +234,7 @@ def _run_graph_in_thread(
                     break
                 emit({"mode": mode, "payload": payload})
 
-            if not interrupted:
+            if not interrupted and run.status != "failed":
                 # Pulled from the checkpointer's own merged state rather
                 # than accumulated from this call's stream of "updates"
                 # events: on a `retry_run` resume, nodes that already
@@ -481,3 +488,35 @@ async def retry_run(
     session.add(run)
     session.commit()
     return _start_stream(run_id, None)
+
+
+@router.post("/runs/{run_id}/cancel")
+def cancel_run(
+    run_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Session = Depends(get_session),
+):
+    """Cancels an in-flight run immediately."""
+    run = _get_owned_run(run_id, current_user, session)
+    if run.status in TERMINAL_STATUSES:
+        return run
+
+    # Flag cancellation in Redis for any running thread
+    redis_client = _sync_redis()
+    events_key = _redis_events_key(run_id)
+    try:
+        redis_client.set(f"run:{run_id}:cancelled", "1", ex=EVENTS_TTL_SECONDS)
+        error_msg = "Run was stopped by user."
+        redis_client.rpush(
+            events_key, json.dumps({"mode": "error", "payload": error_msg})
+        )
+        redis_client.rpush(events_key, json.dumps(None))
+    finally:
+        redis_client.close()
+
+    run.status = "failed"
+    run.error = "Run was stopped by user."
+    session.add(run)
+    session.commit()
+    session.refresh(run)
+    return run

@@ -23,4 +23,5 @@ export const API_ENDPOINTS = {
   AGENT_RUN_STREAM: (id: number) => `${BASE}/agent/runs/${id}/stream`,
   AGENT_RUN_APPROVE: (id: number) => `${BASE}/agent/runs/${id}/approve`,
   AGENT_RUN_RETRY: (id: number) => `${BASE}/agent/runs/${id}/retry`,
+  AGENT_RUN_CANCEL: (id: number) => `${BASE}/agent/runs/${id}/cancel`,
 }

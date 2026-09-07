@@ -135,7 +135,19 @@ reasoning_llm = ChatOllama(
 
 ---
 
-## 5. Verifying Connection
+## 5. Preventing Hallucinations
+
+When answering questions about retrieved documents, include this instruction in the prompt:
+
+```text
+Answer only using the provided context.
+If the answer is not explicitly supported, say: "The policy does not specify this."
+Do not infer, combine, or invent benefits, amounts, or frequencies.
+```
+
+---
+
+## 6. Verifying Connection
 
 To run a simple script verifying your models work locally, run this command inside the `apps/api` directory:
 
@@ -146,3 +158,6 @@ resp = requests.post('http://localhost:11434/api/generate', json={'model': 'qwen
 print('Qwen output:', resp.json().get('response'))
 "
 ```
+
+ollama run gemma4
+ollama run qwen3.8

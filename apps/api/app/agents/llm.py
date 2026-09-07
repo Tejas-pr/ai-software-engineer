@@ -11,16 +11,159 @@ uniformity is what lets `langgraph.prebuilt.create_react_agent` (used in
 again for the agent graph.
 """
 
+import json
+import re
+import uuid
 from functools import lru_cache
+from typing import Any
 
 from langchain_anthropic import ChatAnthropic
+from langchain_core.callbacks import (
+    AsyncCallbackManagerForLLMRun,
+    CallbackManagerForLLMRun,
+)
 from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage, ToolCall
+from langchain_core.outputs import ChatResult
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 from app.config import settings
 from app.services.user_api_keys import get_user_api_key
+
+
+def _extract_fallback_tool_calls(text: str) -> list[ToolCall]:
+    """Extract tool calls from plain text/markdown when a local model narrates
+
+    a tool call instead of emitting a native tool_calls structure.
+    """
+    tool_calls: list[ToolCall] = []
+
+    # 1. Look for <tool_call> tags
+    tag_matches = re.findall(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", text, re.DOTALL)
+    if tag_matches:
+        for m in tag_matches:
+            try:
+                d = json.loads(m)
+                if isinstance(d, dict) and "name" in d:
+                    args = d.get("arguments", {})
+                    if isinstance(args, str):
+                        args = json.loads(args)
+                    tool_calls.append(
+                        ToolCall(
+                            name=d["name"],
+                            args=args,
+                            id=f"call_{uuid.uuid4().hex[:8]}",
+                            type="tool_call",
+                        )
+                    )
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+                continue
+        if tool_calls:
+            return tool_calls
+
+    # 2. Look for ```json ... ``` code blocks
+    code_blocks = re.findall(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if code_blocks:
+        for m in code_blocks:
+            try:
+                d = json.loads(m)
+                if isinstance(d, dict) and "name" in d:
+                    args = d.get("arguments", {})
+                    if isinstance(args, str):
+                        args = json.loads(args)
+                    tool_calls.append(
+                        ToolCall(
+                            name=d["name"],
+                            args=args,
+                            id=f"call_{uuid.uuid4().hex[:8]}",
+                            type="tool_call",
+                        )
+                    )
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+                continue
+        if tool_calls:
+            return tool_calls
+
+    # 3. Look for direct JSON object
+    trimmed = text.strip()
+    if trimmed.startswith("{") and trimmed.endswith("}"):
+        try:
+            d = json.loads(trimmed)
+            if isinstance(d, dict) and "name" in d:
+                args = d.get("arguments", {})
+                if isinstance(args, str):
+                    args = json.loads(args)
+                tool_calls.append(
+                    ToolCall(
+                        name=d["name"],
+                        args=args,
+                        id=f"call_{uuid.uuid4().hex[:8]}",
+                        type="tool_call",
+                    )
+                )
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+            pass
+
+    return tool_calls
+
+
+def _patch_chat_result(result: ChatResult) -> ChatResult:
+    for gen in result.generations:
+        msg = gen.message
+
+        # Print Ollama token usage in color
+        gen_info = gen.generation_info or {}
+        resp_meta = getattr(msg, "response_metadata", {}) or {}
+        prompt_eval_count = gen_info.get(
+            "prompt_eval_count", resp_meta.get("prompt_eval_count")
+        )
+        eval_count = gen_info.get("eval_count", resp_meta.get("eval_count"))
+
+        if prompt_eval_count is not None or eval_count is not None:
+            # Bold Cyan for Prompt Tokens, Bold Green for Response Tokens
+            print(f"\033[1;36mPrompt Tokens: {prompt_eval_count}\033[0m")
+            print(f"\033[1;32mResponse Tokens: {eval_count}\033[0m")
+
+        if isinstance(msg, AIMessage) and not msg.tool_calls and msg.content:
+            extracted = _extract_fallback_tool_calls(
+                msg.content if isinstance(msg.content, str) else str(msg.content)
+            )
+            if extracted:
+                msg.tool_calls = extracted
+    return result
+
+
+class RobustChatOllama(ChatOllama):
+    """Subclass of ChatOllama that intercepts and converts narrated tool calls
+
+    (e.g. ```json { "name": "...", "arguments": ... } ```) into native ToolCalls.
+    This resolves the common reliability gap with local models like Qwen Coder.
+    """
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        res = super()._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
+        return _patch_chat_result(res)
+
+    async def _agenerate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: AsyncCallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        res = await super()._agenerate(
+            messages, stop=stop, run_manager=run_manager, **kwargs
+        )
+        return _patch_chat_result(res)
+
 
 # Model name -> (provider check, builder). Checked in order; first match
 # wins. Ollama has no prefix check — it's the catch-all for local dev, since
@@ -81,8 +224,8 @@ def get_chat_model(
                 temperature=temperature,
             )
 
-    # Catch-all: local Ollama model.
-    return ChatOllama(
+    # Catch-all: local Ollama model wrapped with RobustChatOllama.
+    return RobustChatOllama(
         model=model,
         base_url=settings.OLLAMA_BASE_URL,
         temperature=temperature,

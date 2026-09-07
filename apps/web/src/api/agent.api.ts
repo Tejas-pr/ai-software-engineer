@@ -103,6 +103,12 @@ export function retryRun(id: number): Promise<Response> {
   })
 }
 
+/** Cancels an active run immediately. */
+export async function cancelRun(id: number): Promise<AgentRun> {
+  const res = await apiClient.post<AgentRun>(API_ENDPOINTS.AGENT_RUN_CANCEL(id))
+  return res.data
+}
+
 /** Parses a `text/event-stream` body of `data: {...}\n\n` frames into
  * typed events, one at a time, as they arrive. */
 export async function* readAgentStream(

@@ -17,5 +17,21 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: ai_swe_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ai_swe_redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   ai_swe_postgres_data:
+  ai_swe_redis_data:

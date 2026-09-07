@@ -15,6 +15,7 @@ import {
 } from "@workspace/ui/components/select"
 import {
   approveRun,
+  cancelRun,
   createRun,
   getRun,
   listRuns,
@@ -158,6 +159,7 @@ export function ProjectDetailPage() {
   // Distinct from `retrying` above (project reconnect) — this is for
   // retrying a failed *run* from its last checkpoint via POST .../retry.
   const [retryingRun, setRetryingRun] = useState(false)
+  const [stoppingRun, setStoppingRun] = useState(false)
 
   // Key-source toggle state and available providers fetched from backend.
   const [availableModels, setAvailableModels] =
@@ -335,6 +337,25 @@ export function ProjectDetailPage() {
       await consumeStream(response, run.id)
     } finally {
       setRetryingRun(false)
+    }
+  }
+
+  const handleStopRun = async () => {
+    if (!run || ["completed", "rejected", "failed"].includes(run.status)) return
+    setStoppingRun(true)
+    try {
+      const updated = await cancelRun(run.id)
+      setRun(updated)
+      setStreamError("Run was stopped by user.")
+      setRunHistory((prev) => [
+        updated,
+        ...prev.filter((r) => r.id !== updated.id),
+      ])
+    } catch {
+      setRun({ ...run, status: "failed", error: "Run was stopped by user." })
+      setStreamError("Run was stopped by user.")
+    } finally {
+      setStoppingRun(false)
     }
   }
 
@@ -613,16 +634,31 @@ export function ProjectDetailPage() {
                   Skip tests (treat as passed — useful when the repo has no test
                   suite, or the planner picks a bad verify command)
                 </label>
-                <Button
-                  className="w-full rounded-lg font-semibold"
-                  disabled={!canRun}
-                  onClick={handleStartRun}
-                >
+                <div className="flex items-center gap-2">
+                  <Button
+                    className="flex-1 rounded-lg font-semibold"
+                    disabled={!canRun}
+                    onClick={handleStartRun}
+                  >
+                    {run &&
+                    !["completed", "rejected", "failed"].includes(run.status)
+                      ? "Running..."
+                      : "Run"}
+                  </Button>
                   {run &&
-                  !["completed", "rejected", "failed"].includes(run.status)
-                    ? "Running..."
-                    : "Run"}
-                </Button>
+                    !["completed", "rejected", "failed"].includes(
+                      run.status
+                    ) && (
+                      <Button
+                        variant="destructive"
+                        className="cursor-pointer rounded-lg font-semibold"
+                        disabled={stoppingRun}
+                        onClick={handleStopRun}
+                      >
+                        {stoppingRun ? "Stopping..." : "Stop"}
+                      </Button>
+                    )}
+                </div>
               </section>
             </div>
 

@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # This *is* the sandbox boundary for filesystem/terminal tools during an
     # agent run (see app/agents/tools.py) — never point this at the app repo.
     WORKSPACES_ROOT: str = "./workspaces"
+    AGENT_STEP_TIMEOUT_SECONDS: int = 600
 
     # Gemini LLM Settings
     GEMINI_API_KEY: str = ""
