@@ -45,9 +45,13 @@ class Settings(BaseSettings):
 
     # Ollama Local LLM Settings
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODELS: list[str] = ["qwen2.5-coder:7b", "deepseek-r1:8b"]
-    OLLAMA_CODE_MODEL: str = "qwen2.5-coder:7b"
-    OLLAMA_REASONING_MODEL: str = "deepseek-r1:8b"
+    OLLAMA_MODELS: list[str] = [
+        "qwen3.5:9b",
+        "deepseek-r1:8b",
+        "qwen2.5-coder:7b",
+    ]
+    OLLAMA_CODE_MODEL: str = "qwen3.5:9b"
+    OLLAMA_REASONING_MODEL: str = "qwen3.5:9b"
 
     # Anthropic (Claude) Settings — cloud provider option for agent runs
     ANTHROPIC_API_KEY: str = ""

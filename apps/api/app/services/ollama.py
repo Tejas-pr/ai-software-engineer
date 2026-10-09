@@ -16,6 +16,7 @@ from app.config import settings
 # a slightly weaker one that does. Larger installed variants of the same
 # family are preferred over smaller ones — see `recommend_coding_model`.
 _CODING_MODEL_PRIORITY = [
+    "qwen3.5",
     "qwen2.5-coder",
     "codestral",
     "deepseek-coder",
