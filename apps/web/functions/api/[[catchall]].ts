@@ -69,7 +69,9 @@ export async function onRequest(
 
     for (const rawCookie of setCookies) {
       // Strip foreign Domain attribute so cookie binds to pages.dev as host-only first party
-      const cleanCookie = rawCookie.replace(/Domain=[^;]+;?\s*/gi, "")
+      let cleanCookie = rawCookie.replace(/Domain=[^;]+;?\s*/gi, "")
+      // Convert SameSite=None to SameSite=Lax since it is now purely first-party
+      cleanCookie = cleanCookie.replace(/SameSite=None/gi, "SameSite=Lax")
       responseHeaders.append("Set-Cookie", cleanCookie)
     }
 

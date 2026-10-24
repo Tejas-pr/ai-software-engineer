@@ -6,8 +6,15 @@ const rawBaseURL =
     ? import.meta.env.VITE_API_URL
     : "http://localhost:8000"
 
-// Strip trailing slashes, or treat "/" as empty string for relative proxying without double-slash issues
-export const baseURL = rawBaseURL === "/" ? "" : rawBaseURL.replace(/\/+$/, "")
+// On Cloudflare Pages (*.pages.dev), always use relative paths so API requests and auth cookies
+// stay strictly first-party (avoiding Chrome's third-party cookie blocker).
+// In local development (localhost), use rawBaseURL (http://localhost:8000).
+export const baseURL =
+  typeof window !== "undefined" && window.location.hostname.endsWith(".pages.dev")
+    ? ""
+    : rawBaseURL === "/"
+      ? ""
+      : rawBaseURL.replace(/\/+$/, "")
 
 // Auth is entirely httpOnly cookies (access + refresh) set by the backend —
 // no token ever touches localStorage or JS-readable state.
