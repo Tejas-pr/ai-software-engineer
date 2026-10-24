@@ -47,6 +47,7 @@ import { getAvailableModels, type AvailableModels } from "@/api/settings.api"
 import { ApplicationBadge } from "@/components/molecules/application/application-badge"
 import { ApplicationButton } from "@/components/molecules/application/application-button"
 import { ApplicationCard } from "@/components/molecules/application/application-card"
+import { ApplicationInput } from "@/components/molecules/application/application-input"
 import { ApplicationSelection } from "@/components/molecules/application/application-selection"
 import { ApplicationTabs } from "@/components/molecules/application/application-tabs"
 import { PageHeader } from "@/components/molecules/common/page-header"
@@ -1068,12 +1069,11 @@ export function ProjectDetailPage() {
                       <label className="text-2xs font-medium tracking-wider text-muted-foreground uppercase">
                         Review Guidance / Feedback (Optional)
                       </label>
-                      <input
+                      <ApplicationInput
                         type="text"
                         value={feedback}
                         onChange={(e) => setFeedback(e.target.value)}
                         placeholder="e.g. Ensure strict TypeScript types, do not modify config.ts..."
-                        className="w-full rounded-md border border-input bg-card px-3 py-2 text-xs text-foreground outline-hidden placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-primary/25"
                       />
                     </div>
 

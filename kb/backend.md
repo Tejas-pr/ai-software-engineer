@@ -122,6 +122,9 @@ Access is through the project's organization (`get_accessible_project`).
 | PUT | `/api-keys/{provider}` | `{api_key}` → verified with the provider (`verify_provider_key`; 400 if rejected, 502 if the provider can't be reached), then encrypt + upsert, and the cached model clients are cleared. 400 for an unknown provider. |
 | DELETE | `/api-keys/{provider}` | Removes it (and clears cached clients). |
 | GET | `/available-models` | `{user_providers, platform_providers, local_models: [{id, size_gb, parameter_size, family}], recommended_coding_model}`. Local models are queried live from Ollama (only ones with the `tools` capability); if Ollama is unreachable it falls back to the static `OLLAMA_MODELS` list, and `ollama_available` (true only when Ollama answered with tool-capable models) tells the two apart. The web app builds its model picker and the onboarding "use local models" option from this. |
+| GET | `/resources` | Returns host telemetry (CPU count, architecture, accelerator Metal/CUDA, memory RAM, disk free/used, workspace folder bytes), Ollama daemon info (availability, version, warm loaded models with VRAM sizes), and persistent user limits (`UserResourceLimit`). |
+| PUT | `/resources` | Updates user hardware limits: GPU layers `ollama_num_gpu`, threads `ollama_num_thread`, VRAM budget `ollama_vram_budget_gb`, keep-alive `ollama_keep_alive`, context window `max_context_window`, token budget `max_tokens_per_run`, timeout `max_run_timeout_seconds`, concurrent runs `max_concurrent_runs`, storage limit `workspace_storage_limit_gb`, auto-prune flag `auto_prune_workspaces`. Invalidates cached chat models. |
+| POST | `/resources/prune-cache` | Reclaims host disk space by cleaning up orphan and stale workspace directories in `apps/api/workspaces/`. Returns `{pruned_runs_count, reclaimed_bytes, reclaimed_mb, workspaces_remaining_mb}`. |
 
 ### Other
 

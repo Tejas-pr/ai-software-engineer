@@ -75,3 +75,88 @@ export async function setApiKey(
 export async function deleteApiKey(provider: string): Promise<void> {
   await apiClient.delete(`${BASE}/api-keys/${provider}`)
 }
+
+export interface SystemTelemetry {
+  cpu_count: number
+  platform: string
+  arch: string
+  accelerator: "metal" | "cuda" | "rocm" | "none"
+  accelerator_name: string
+  memory: {
+    total_gb: number
+    available_gb: number
+    percent_used: number
+  } | null
+  disk: {
+    total_gb: number
+    used_gb: number
+    free_gb: number
+    percent_used: number
+  }
+  workspaces_used_bytes: number
+  workspaces_used_mb: number
+}
+
+export interface OllamaLoadedModel {
+  name: string
+  model: string
+  size: number
+  size_vram: number
+  expires_at?: string
+}
+
+export interface OllamaHardwareInfo {
+  available: boolean
+  host: string
+  version: string | null
+  loaded_models: OllamaLoadedModel[]
+  error: string | null
+}
+
+export interface ResourceLimitsPayload {
+  ollama_num_gpu: number
+  ollama_num_thread: number
+  ollama_vram_budget_gb: number
+  ollama_keep_alive: string
+  max_context_window: number
+  max_tokens_per_run: number
+  max_run_timeout_seconds: number
+  max_concurrent_runs: number
+  workspace_storage_limit_gb: number
+  auto_prune_workspaces: boolean
+}
+
+export interface ResourceSettingsResponse {
+  telemetry: SystemTelemetry
+  ollama: OllamaHardwareInfo
+  limits: ResourceLimitsPayload
+}
+
+export interface PruneStorageResponse {
+  pruned_runs_count: number
+  reclaimed_bytes: number
+  reclaimed_mb: number
+  workspaces_remaining_mb: number
+}
+
+export async function getResourceSettings(): Promise<ResourceSettingsResponse> {
+  const res = await apiClient.get<ResourceSettingsResponse>(`${BASE}/resources`)
+  return res.data
+}
+
+export async function updateResourceSettings(
+  payload: ResourceLimitsPayload
+): Promise<ResourceLimitsPayload> {
+  const res = await apiClient.put<ResourceLimitsPayload>(
+    `${BASE}/resources`,
+    payload
+  )
+  return res.data
+}
+
+export async function pruneStorageCache(): Promise<PruneStorageResponse> {
+  const res = await apiClient.post<PruneStorageResponse>(
+    `${BASE}/resources/prune-cache`
+  )
+  return res.data
+}

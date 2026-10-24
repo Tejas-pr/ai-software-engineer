@@ -5,6 +5,7 @@ from app.models.project import Project
 from app.models.token import RefreshToken
 from app.models.user import User
 from app.models.user_api_key import UserApiKey
+from app.models.user_resource_limit import UserResourceLimit
 
 __all__ = [
     "AgentRun",
@@ -15,4 +16,5 @@ __all__ = [
     "RefreshToken",
     "User",
     "UserApiKey",
+    "UserResourceLimit",
 ]

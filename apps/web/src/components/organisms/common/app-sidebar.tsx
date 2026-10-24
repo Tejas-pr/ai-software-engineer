@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { Link, NavLink, useLocation } from "react-router-dom"
 import { motion } from "motion/react"
 import {
+  Cpu,
   KeyRound,
   Plus,
   Search,
@@ -290,6 +291,12 @@ const SETTINGS_LINKS = [
     label: "API keys",
     hint: "Your Gemini, Claude, OpenAI keys",
     icon: KeyRound,
+  },
+  {
+    to: paths.settings.resources,
+    label: "Hardware & resources",
+    hint: "GPU, threads, context & storage",
+    icon: Cpu,
   },
   {
     to: paths.account,

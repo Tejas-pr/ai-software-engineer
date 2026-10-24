@@ -123,6 +123,12 @@ Product
       with frosted glass palette (`AppSearchDialog`), dynamic lazy loading,
       `Kbd` primitive, recent selections persistence, and instant navigation
       across actions, pages, connected repositories, and agent runs.
+- [x] Hardware & Resource Limits page (`/settings/resources`):
+      Live telemetry inspection (CPU cores, RAM & accelerator Metal/CUDA, workspace disk total/used vs limit, Ollama connectivity & loaded models),
+      local model hardware controls (GPU layers `ollama_num_gpu`, thread count `ollama_num_thread`, VRAM budget `ollama_vram_budget_gb`, keep-alive `ollama_keep_alive`, context window `max_context_window`),
+      execution guardrails (token limit per run `max_tokens_per_run`, run timeout `max_run_timeout_seconds`, concurrent runs `max_concurrent_runs`),
+      workspace storage maintenance (`workspace_storage_limit_gb`, auto-prune switch, instant cache prune button),
+      sidebar navigation link under Settings with `Cpu` icon, and command palette (`Cmd+K`) integration.
 
 Reliability and hardening (see `kb/known-issues.md`)
 - [ ] Cancel that interrupts the running node, not just between steps

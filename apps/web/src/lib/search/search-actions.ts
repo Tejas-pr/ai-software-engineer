@@ -85,6 +85,18 @@ export function actionItems({
       "openai",
       "tokens",
     ]),
+    open("resources", "Hardware & resource limits", paths.settings.resources, [
+      "hardware",
+      "resources",
+      "cpu",
+      "gpu",
+      "vram",
+      "threads",
+      "ollama",
+      "tokens",
+      "storage",
+      "prune",
+    ]),
     open("profile", "Edit profile", paths.account, [
       "account",
       "github",

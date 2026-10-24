@@ -183,6 +183,16 @@ export const router = createBrowserRouter([
             }),
           },
           {
+            path: paths.settings.resources,
+            handle: { title: "Hardware & resources" },
+            ErrorBoundary: RouteErrorBoundary,
+            lazy: async () => ({
+              Component: (
+                await import("@/pages/settings/resource-settings-page")
+              ).ResourceSettingsPage,
+            }),
+          },
+          {
             path: paths.account,
             handle: { title: "Profile" },
             ErrorBoundary: RouteErrorBoundary,

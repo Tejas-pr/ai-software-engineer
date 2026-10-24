@@ -64,7 +64,7 @@ pages/
   dashboard/             dashboard-page, dashboard-agents-page
   projects/              projects-page (manage), project-detail-page (runs)
   runs/                  runs-page
-  settings/              organization-settings, members, api-keys
+  settings/              organization-settings, members, api-keys, resource-settings
   account/               account-page (profile)
 ```
 
@@ -93,6 +93,7 @@ helpers in `lib/`), `data-slot="..."` on component roots.
 | `/settings` | App | Organization | Rename, details, delete / leave |
 | `/settings/members` | App | Members | Add by GitHub username, roles, remove |
 | `/settings/api-keys` | App | API keys | The user's own keys + local model status |
+| `/settings/resources` | App | Hardware & resources | Host compute telemetry, GPU layers, threads, VRAM, context window, token quotas, and workspace cache pruning |
 | `/account` | App | Profile | Display name, GitHub, log out |
 
 `RootLayout` wraps everything in the toast provider, the top navigation

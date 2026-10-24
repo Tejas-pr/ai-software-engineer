@@ -1,5 +1,6 @@
 import {
   Bot,
+  Cpu,
   FolderGit2,
   KeyRound,
   LayoutDashboard,
@@ -56,6 +57,7 @@ export const PAGE_ICONS: Record<string, SearchIcon> = {
   [paths.settings.organization]: { icon: Settings, tone: "slate" },
   [paths.settings.members]: { icon: Users, tone: "blue" },
   [paths.settings.apiKeys]: { icon: KeyRound, tone: "amber" },
+  [paths.settings.resources]: { icon: Cpu, tone: "amber" },
   [paths.account]: { icon: UserRound, tone: "violet" },
   [paths.agents]: { icon: Bot, tone: "violet" },
   [paths.setup]: { icon: Settings, tone: "slate" },

@@ -24,6 +24,7 @@ export const paths = {
     organization: "/settings",
     members: "/settings/members",
     apiKeys: "/settings/api-keys",
+    resources: "/settings/resources",
   },
   account: "/account",
 } as const
