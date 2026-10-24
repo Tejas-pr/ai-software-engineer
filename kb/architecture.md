@@ -199,7 +199,7 @@ update).
 | `agent_runs` | `id` (= LangGraph `thread_id`), `project_id`, `user_id`, `task`, `model`, `skip_tests`, `status`, `pending_plan` (JSON), `review_notes`, `pr_url`, `error` |
 | `document_chunks` | `project_id`, `file_path`, `language`, `chunk_index`, `start_line`, `end_line`, `content`, `embedding vector(768)` |
 | `user_api_keys` | `user_id`, `provider` (`gemini` / `claude` / `gpt`), `encrypted_key`; unique `(user_id, provider)` |
-| `refresh_tokens` | Exists, **unused** — refresh tokens are stateless JWTs |
+| `refresh_tokens` | `id`, `token` (unique), `user_id` (foreign key), `expires_at`, `is_revoked`; tracks revocable refresh tokens, rotated on refresh, revoked on logout |
 | `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, `checkpoint_migrations` | Owned by LangGraph's `PostgresSaver.setup()`; outside Alembic |
 
 No foreign key cascades: deleting a project deletes its runs and chunks in

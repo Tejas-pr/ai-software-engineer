@@ -1,6 +1,6 @@
 # Remaining Tasks (TODO)
 
-Consolidated backlog of remaining tasks. All completed milestones and features have been removed.
+Consolidated backlog of remaining tasks. All completed items have been removed.
 
 ---
 
@@ -33,8 +33,4 @@ Consolidated backlog of remaining tasks. All completed milestones and features h
 ## 6. Execution Sandboxing & Reliability
 - [ ] **Immediate Node Cancellation**: Interrupt long-running tools/processes (e.g. running test suites or shell commands) via SIGINT/SIGTERM rather than only between LangGraph node boundaries.
 - [ ] **Containerized Execution Sandbox**: Isolate workspace code execution inside disposable Docker / microVM containers instead of host process shell execution.
-- [ ] **Revocable Refresh Tokens**: Track and validate refresh tokens against the database `refresh_tokens` table to allow remote logout / revocation.
 - [ ] **Deterministic Approval Test**: Refactor `test_m4_approval` to avoid reliance on small Ollama model tool-calling loops.
-
-## 7. Open Source License & Attribution Safeguards
-- [ ] Add an attribution-preserving open source license (e.g. Apache-2.0 + NOTICE) ensuring the *"Built by Tejas-pr (https://github.com/Tejas-pr)"* credit remains legally protected.

@@ -49,9 +49,9 @@ Verified against the code. Remove an entry in the same change that fixes it.
 - **`echo=True`** on the SQLAlchemy engine logs every query.
 - **`OLLAMA_CODE_MODEL` / `OLLAMA_REASONING_MODEL`** in `config.py` are never
   read — one user-picked model drives every node.
-- **`refresh_tokens` table and `User.hashed_password` are unused** —
-  refresh tokens are stateless JWTs and accounts are GitHub-only. Logout
-  can't revoke an issued refresh token.
+- **`User.hashed_password` is unused** — accounts are GitHub OAuth-only.
+  Refresh tokens are tracked in `refresh_tokens`, validated, rotated on refresh,
+  and revoked on logout.
 - **The pre-commit hook runs `git add .`**, so a hooked commit includes
   every pending change (see `conventions.md` → Commits).
 - **`apps/api/.env.example` lists `TOKEN_ENCRYPTION_KEY` twice**, the first

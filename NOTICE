@@ -1,0 +1,20 @@
+AI Software Engineer
+Copyright (c) 2026 Tejas P R (https://github.com/Tejas-pr)
+
+This product includes software developed by Tejas P R (https://github.com/Tejas-pr).
+
+========================================================================
+Attribution Requirement
+========================================================================
+
+In accordance with Section 4(d) of the Apache License, Version 2.0, all
+distributions, forks, public deployments, and derivative works of this
+software must preserve the author credit and attribution:
+
+    "Built by Tejas-pr (https://github.com/Tejas-pr)"
+
+This notice must be displayed legibly in:
+1. All client-facing user interfaces (e.g. website headers, footers, sidebars, and about dialogs).
+2. Backend API response headers (`X-Built-By`).
+3. Accompanying documentation, repository descriptions, and release packages.
+

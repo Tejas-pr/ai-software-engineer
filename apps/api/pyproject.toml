@@ -3,6 +3,7 @@ name = "api"
 version = "0.1.0"
 description = "AI Software Engineer API — built by Tejas-pr (https://github.com/Tejas-pr)"
 authors = [{ name = "Tejas-pr" }]
+license = { text = "Apache-2.0" }
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

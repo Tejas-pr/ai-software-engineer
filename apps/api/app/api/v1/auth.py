@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
 import httpx
@@ -9,6 +9,7 @@ from sqlmodel import Session, SQLModel, select
 from app.api.deps import get_current_user
 from app.config import settings
 from app.db import get_session
+from app.models.token import RefreshToken
 from app.models.user import User
 from app.utils.crypto import encrypt_token
 from app.utils.security import create_access_token, create_refresh_token, decode_token
@@ -37,12 +38,26 @@ class UserPublic(SQLModel):
     onboarded_at: datetime | None
 
 
-def _set_auth_cookies(response: Response, user: User) -> None:
+def _set_auth_cookies(
+    response: Response, user: User, session: Session | None = None
+) -> None:
     access_token = create_access_token(data={"sub": user.email})
     refresh_token = create_refresh_token(data={"sub": user.email})
     is_https = COOKIE_SECURE or settings.GITHUB_REDIRECT_URI.startswith("https://")
     samesite: Literal["none", "lax"] = "none" if is_https else "lax"
     secure = is_https
+
+    # Track revocable refresh token in database
+    if session is not None and user.id is not None:
+        db_token = RefreshToken(
+            token=refresh_token,
+            user_id=user.id,
+            expires_at=datetime.now(UTC)
+            + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+            is_revoked=False,
+        )
+        session.add(db_token)
+        session.commit()
 
     response.set_cookie(
         "access_token",
@@ -167,7 +182,7 @@ async def github_callback(code: str, session: Session = Depends(get_session)):
     # 5. Issue auth cookies and redirect back to the frontend — no token in the URL.
     frontend_base = settings.FRONTEND_URL.split(",")[0].strip()
     redirect = RedirectResponse(f"{frontend_base}/login/callback")
-    _set_auth_cookies(redirect, db_user)
+    _set_auth_cookies(redirect, db_user, session=session)
     return redirect
 
 
@@ -192,12 +207,41 @@ def refresh(
     if user is None:
         raise unauthorized
 
-    _set_auth_cookies(response, user)
+    # Check whether the refresh token is tracked in database and not revoked
+    db_token = session.exec(
+        select(RefreshToken).where(RefreshToken.token == token)
+    ).first()
+    if db_token is not None:
+        expires_at = db_token.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        if db_token.is_revoked or expires_at < datetime.now(UTC):
+            raise unauthorized
+        # Token rotation: invalidate current refresh token upon refresh
+        db_token.is_revoked = True
+        session.add(db_token)
+        session.commit()
+
+    _set_auth_cookies(response, user, session=session)
     return {"status": "ok"}
 
 
 @router.post("/logout/")
-def logout(response: Response):
+def logout(
+    request: Request,
+    response: Response,
+    session: Session = Depends(get_session),
+):
+    token = request.cookies.get("refresh_token")
+    if token:
+        db_token = session.exec(
+            select(RefreshToken).where(RefreshToken.token == token)
+        ).first()
+        if db_token and not db_token.is_revoked:
+            db_token.is_revoked = True
+            session.add(db_token)
+            session.commit()
+
     is_https = COOKIE_SECURE or settings.GITHUB_REDIRECT_URI.startswith("https://")
     samesite: Literal["none", "lax"] = "none" if is_https else "lax"
     secure = is_https

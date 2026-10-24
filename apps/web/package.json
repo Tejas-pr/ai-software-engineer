@@ -2,6 +2,7 @@
   "name": "web",
   "version": "0.0.1",
   "author": "Tejas-pr (https://github.com/Tejas-pr)",
+  "license": "Apache-2.0",
   "type": "module",
   "private": true,
   "scripts": {
