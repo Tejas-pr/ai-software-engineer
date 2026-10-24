@@ -4,10 +4,9 @@ module.exports = {
   apps: [
     {
       name: "ai-engineer-api",
-      script: path.resolve(__dirname, ".venv/bin/uvicorn"),
-      args: "app.main:app --host 0.0.0.0 --port 8000",
+      script: path.resolve(__dirname, "start.sh"),
+      interpreter: "bash",
       cwd: __dirname,
-      interpreter: "none",
       env: {
         ENVIRONMENT: "production",
       },

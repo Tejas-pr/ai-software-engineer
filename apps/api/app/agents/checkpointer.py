@@ -32,7 +32,9 @@ _PG_DSN = settings.DATABASE_URL.replace("postgresql+psycopg://", "postgresql://"
 def get_checkpointer() -> PostgresSaver:
     pool = ConnectionPool(
         conninfo=_PG_DSN,
-        max_size=5,
+        min_size=1,
+        max_size=2,
+        timeout=30.0,
         kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row},
         open=True,
     )
