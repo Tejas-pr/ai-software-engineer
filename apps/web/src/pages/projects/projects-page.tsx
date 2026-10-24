@@ -1,20 +1,10 @@
 import { useEffect, useState } from "react"
 import axios from "axios"
-import { Link, useNavigate } from "react-router-dom"
-import { ChevronDown } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
-  DropdownMenuPopup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@workspace/ui/components/dropdown-menu"
-import { getUser } from "@/api/user.api"
-import { logout } from "@/api/auth.api"
+import { ApplicationBadge } from "@/components/molecules/application/application-badge"
+import { projectPath } from "@/lib/common/paths"
 import {
   connectProject,
   listGithubRepos,
@@ -23,12 +13,6 @@ import {
   type GithubRepo,
   type Project,
 } from "@/api/projects.api"
-
-interface User {
-  id: number
-  username: string
-  email: string
-}
 
 function describeError(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
@@ -41,17 +25,24 @@ function describeError(err: unknown, fallback: string): string {
 }
 
 function statusBadge(status: Project["status"]) {
-  const style = {
-    ready: "text-emerald-600",
-    pending: "text-primary",
-    failed: "text-destructive",
-  }[status]
-  return <span className={`text-xs font-semibold ${style}`}>{status}</span>
+  const variant = {
+    ready: "completed",
+    pending: "running",
+    failed: "failed",
+  } as const
+  return (
+    <ApplicationBadge
+      variant={variant[status]}
+      size="sm"
+      dot
+      pulseDot={status === "pending"}
+    >
+      {status}
+    </ApplicationBadge>
+  )
 }
 
-export function RepoListPage() {
-  const [user, setUser] = useState<User | null>(null)
-  const [userLoading, setUserLoading] = useState(true)
+export function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [projectsLoading, setProjectsLoading] = useState(true)
   const [repos, setRepos] = useState<GithubRepo[] | null>(null)
@@ -61,25 +52,11 @@ export function RepoListPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    getUser()
-      .then(setUser)
-      .catch(() => {})
-      .finally(() => setUserLoading(false))
-
     listProjects()
       .then(setProjects)
       .catch(() => {})
       .finally(() => setProjectsLoading(false))
   }, [])
-
-  const handleLogout = async () => {
-    try {
-      await logout()
-    } catch {
-      // best-effort — the cookies will simply expire on their own otherwise
-    }
-    navigate("/login", { state: { loggedOut: true } })
-  }
 
   const loadRepos = async () => {
     setReposLoading(true)
@@ -105,7 +82,7 @@ export function RepoListPage() {
     setError(null)
     try {
       const project = await connectProject(repo)
-      navigate(`/projects/${project.id}`)
+      navigate(projectPath(project.id))
     } catch (err) {
       setError(describeError(err, "Couldn't connect that repo. Try again."))
       setBusyUrl(null)
@@ -117,7 +94,7 @@ export function RepoListPage() {
     setError(null)
     try {
       const updated = await reconnectProject(project)
-      navigate(`/projects/${updated.id}`)
+      navigate(projectPath(updated.id))
     } catch (err) {
       setError(describeError(err, "Couldn't reconnect that repo. Try again."))
       setBusyUrl(null)
@@ -125,81 +102,19 @@ export function RepoListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
-      <div className="mx-auto max-w-4xl px-6 py-12">
-        <header className="mb-10 flex items-center justify-between border-b border-border pb-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-5 w-5"
-              >
-                <path d="m18 16 4-4-4-4" />
-                <path d="m6 8-4 4 4 4" />
-                <path d="m14.5 4-5 16" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-lg font-bold tracking-tight">
-                AI Software Engineer
-              </div>
-              {userLoading ? (
-                <Skeleton className="mt-1 h-3.5 w-24" />
-              ) : (
-                user && (
-                  <div className="text-xs text-muted-foreground">
-                    {user.username}
-                  </div>
-                )
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {userLoading ? (
-              <Skeleton className="h-7 w-20 rounded-lg" />
-            ) : (
-              user && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
-                      <Button
-                        variant="outline"
-                        className="gap-1.5 rounded-lg"
-                      />
-                    }
-                  >
-                    <span>{user.username}</span>
-                    <ChevronDown className="h-3 w-3 opacity-50" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuPositioner className="min-w-[10rem]">
-                      <DropdownMenuPopup>
-                        <div className="truncate px-2 py-1.5 font-mono text-xs text-muted-foreground">
-                          {user.email}
-                        </div>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem render={<Link to="/settings" />}>
-                          Settings
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={handleLogout}
-                          className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                        >
-                          Logout
-                        </DropdownMenuItem>
-                      </DropdownMenuPopup>
-                    </DropdownMenuPositioner>
-                  </DropdownMenuPortal>
-                </DropdownMenu>
-              )
-            )}
-          </div>
+    <div className="text-foreground">
+      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">
+        <header className="mb-10 flex flex-col gap-2 border-b border-border pb-8">
+          <span className="text-2xs font-medium tracking-[0.12em] text-muted-foreground uppercase">
+            Workspace
+          </span>
+          <h1 className="font-serif text-4xl leading-none tracking-[-0.01em]">
+            Your repositories
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Open a connected repository to hand the agent a task, or connect a
+            new one from GitHub.
+          </p>
         </header>
 
         {error && (
@@ -261,7 +176,7 @@ export function RepoListPage() {
                   ) : (
                     <Button
                       className="rounded-lg font-semibold"
-                      onClick={() => navigate(`/projects/${project.id}`)}
+                      onClick={() => navigate(projectPath(project.id))}
                     >
                       Open
                     </Button>

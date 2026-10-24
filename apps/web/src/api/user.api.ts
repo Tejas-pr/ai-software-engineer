@@ -1,12 +1,15 @@
 import { apiClient } from "./api"
 import { API_ENDPOINTS } from "./endpoints"
 
+export interface User {
+  id: number
+  username: string
+  email: string
+  is_active: boolean
+}
+
+/** The signed-in user; rejects (401) when signed out */
 export const getUser = async () => {
-  try {
-    const response = await apiClient.get(`${API_ENDPOINTS.AUTH.ME}`)
-    return response.data
-  } catch (error) {
-    console.error("Failed to get user:", error)
-    throw error
-  }
+  const response = await apiClient.get<User>(API_ENDPOINTS.AUTH.ME)
+  return response.data
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { Link } from "react-router-dom"
+import { paths } from "@/lib/common/paths"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Skeleton } from "@workspace/ui/components/skeleton"
@@ -79,17 +80,19 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
+    <div className="text-foreground selection:bg-primary/30">
       <div className="mx-auto max-w-3xl px-6 py-12">
         <header className="mb-10 flex items-center justify-between border-b border-border pb-6">
           <div>
             <Link
-              to="/"
+              to={paths.projects.root}
               className="text-xs text-muted-foreground hover:underline"
             >
               ← All repositories
             </Link>
-            <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+            <h1 className="mt-2 font-serif text-4xl leading-none tracking-[-0.01em]">
+              Settings
+            </h1>
             <p className="text-sm text-muted-foreground">
               Bring your own API key to use your own quota instead of the shared
               platform default — useful once the free tier runs out.

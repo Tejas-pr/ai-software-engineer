@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { Link, useParams } from "react-router-dom"
+import { paths } from "@/lib/common/paths"
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Select,
+  SelectContent,
+  SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectPortal,
-  SelectPositioner,
-  SelectPopup,
-  SelectList,
-  SelectItem,
 } from "@workspace/ui/components/select"
 import {
   approveRun,
@@ -366,7 +364,7 @@ export function ProjectDetailPage() {
 
   if (projectLoading || !project) {
     return (
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="text-foreground">
         <div className="mx-auto max-w-6xl px-6 py-12">
           <header className="mb-10 space-y-2 border-b border-border pb-6">
             <Skeleton className="h-4 w-24" />
@@ -410,17 +408,17 @@ export function ProjectDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
+    <div className="text-foreground selection:bg-primary/30">
       <div className="mx-auto max-w-6xl px-6 py-12">
         <header className="mb-10 flex items-center justify-between border-b border-border pb-6">
           <div>
             <Link
-              to="/"
+              to={paths.projects.root}
               className="text-xs text-muted-foreground hover:underline"
             >
               ← All repositories
             </Link>
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="mt-2 font-serif text-4xl leading-none tracking-[-0.01em]">
               {project.name}
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -491,22 +489,16 @@ export function ProjectDetailPage() {
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Pick an open issue..." />
                       </SelectTrigger>
-                      <SelectPortal>
-                        <SelectPositioner>
-                          <SelectPopup>
-                            <SelectList>
-                              {issues.map((issue) => (
-                                <SelectItem
-                                  key={issue.number}
-                                  value={String(issue.number)}
-                                >
-                                  #{issue.number} {issue.title}
-                                </SelectItem>
-                              ))}
-                            </SelectList>
-                          </SelectPopup>
-                        </SelectPositioner>
-                      </SelectPortal>
+                      <SelectContent>
+                        {issues.map((issue) => (
+                          <SelectItem
+                            key={issue.number}
+                            value={String(issue.number)}
+                          >
+                            #{issue.number} {issue.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   )
                 )}
@@ -597,30 +589,24 @@ export function ProjectDetailPage() {
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectPortal>
-                      <SelectPositioner>
-                        <SelectPopup>
-                          <SelectList>
-                            {visibleModels.map((m) => (
-                              <SelectItem key={m.id} value={m.id}>
-                                <span>{m.name}</span>
-                                <span className="ml-auto flex items-center gap-1.5 pl-4 text-[10px] text-muted-foreground">
-                                  {m.recommended && (
-                                    <span
-                                      title="Best fit for coding among your installed local models"
-                                      className="rounded-full bg-primary/10 px-1.5 py-0.5 font-semibold text-primary"
-                                    >
-                                      Recommended
-                                    </span>
-                                  )}
-                                  {m.group}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectList>
-                        </SelectPopup>
-                      </SelectPositioner>
-                    </SelectPortal>
+                    <SelectContent>
+                      {visibleModels.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          <span>{m.name}</span>
+                          <span className="ml-auto flex items-center gap-1.5 pl-4 text-[10px] text-muted-foreground">
+                            {m.recommended && (
+                              <span
+                                title="Best fit for coding among your installed local models"
+                                className="rounded-full bg-brand-soft px-1.5 py-0.5 font-semibold text-foreground"
+                              >
+                                Recommended
+                              </span>
+                            )}
+                            {m.group}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 )}
 
