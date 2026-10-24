@@ -1,11 +1,11 @@
+const path = require("path");
+
 module.exports = {
   apps: [
     {
       name: "ai-engineer-api",
-      script:
-        process.env.UV_BIN ||
-        (process.env.HOME ? `${process.env.HOME}/.local/bin/uv` : "uv"),
-      args: "run uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      script: path.resolve(__dirname, ".venv/bin/uvicorn"),
+      args: "app.main:app --host 0.0.0.0 --port 8000",
       cwd: __dirname,
       interpreter: "none",
       env: {
