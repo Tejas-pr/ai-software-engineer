@@ -1,18 +1,17 @@
 import { useEffect, useRef, useState } from "react"
-import { Link, useParams, useSearchParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { ArrowLeft, ExternalLink, RefreshCw } from "lucide-react"
+import { cn } from "@workspace/ui/lib/utils"
 import { notifyOrgDataChanged } from "@/hooks/organization/use-org-data"
 import { describeError } from "@/lib/common/api-error"
 import { paths } from "@/lib/common/paths"
 import { RUN_STATUS } from "@/lib/common/status"
-import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select"
+import { ApplicationBadge } from "@/components/molecules/application/application-badge"
+import { ApplicationButton } from "@/components/molecules/application/application-button"
+import { ApplicationCard } from "@/components/molecules/application/application-card"
+import { ApplicationSelection } from "@/components/molecules/application/application-selection"
+import { PageHeader } from "@/components/molecules/common/page-header"
 import {
   approveRun,
   cancelRun,
@@ -117,17 +116,31 @@ function initialNodeStates(): Record<string, NodeState> {
   return states
 }
 
-function statusDot(status: NodeStatus) {
-  const color = {
-    idle: "bg-muted-foreground/30",
-    running: "bg-primary animate-pulse",
-    done: "bg-emerald-500",
-    error: "bg-destructive",
-  }[status]
-  return <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
+function nodeBadge(status: NodeStatus) {
+  const map: Record<
+    NodeStatus,
+    { variant: "neutral" | "running" | "completed" | "failed"; label: string }
+  > = {
+    idle: { variant: "neutral", label: "Idle" },
+    running: { variant: "running", label: "Running" },
+    done: { variant: "completed", label: "Done" },
+    error: { variant: "failed", label: "Error" },
+  }
+  const config = map[status] ?? { variant: "neutral", label: status }
+  return (
+    <ApplicationBadge
+      size="sm"
+      variant={config.variant}
+      dot
+      pulseDot={status === "running"}
+    >
+      {config.label}
+    </ApplicationBadge>
+  )
 }
 
 export function ProjectDetailPage() {
+  const navigate = useNavigate()
   const { projectId } = useParams<{ projectId: string }>()
   const id = Number(projectId)
   const [searchParams] = useSearchParams()
@@ -389,42 +402,37 @@ export function ProjectDetailPage() {
 
   if (projectLoading || !project) {
     return (
-      <div className="text-foreground">
-        <div className="mx-auto max-w-6xl px-6 py-12">
-          <header className="mb-10 space-y-2 border-b border-border pb-6">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-96" />
-          </header>
-          <div className="grid gap-8 lg:grid-cols-3">
-            <div className="space-y-6 lg:col-span-1">
-              <div className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-4 w-12" />
-                  <Skeleton className="h-4 w-20" />
-                </div>
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-              <div className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6">
+        <header className="space-y-2 border-b border-border pb-6">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96" />
+        </header>
+        <div className="grid gap-8 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-1">
+            <ApplicationCard className="space-y-4 p-6">
+              <div className="flex items-center justify-between">
                 <Skeleton className="h-4 w-12" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-4 w-20" />
               </div>
-            </div>
-            <div className="space-y-6 lg:col-span-2">
-              <div className="grid gap-4 sm:grid-cols-2">
-                {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <div
-                    key={n}
-                    className="space-y-2 rounded-lg border border-border bg-card p-4 shadow-sm"
-                  >
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-3 w-16" />
-                  </div>
-                ))}
-              </div>
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </ApplicationCard>
+            <ApplicationCard className="space-y-4 p-6">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-9 w-full" />
+            </ApplicationCard>
+          </div>
+          <div className="space-y-6 lg:col-span-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <ApplicationCard key={n} className="space-y-2 p-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </ApplicationCard>
+              ))}
             </div>
           </div>
         </div>
@@ -433,402 +441,413 @@ export function ProjectDetailPage() {
   }
 
   return (
-    <div className="text-foreground selection:bg-primary/30">
-      <div className="mx-auto max-w-6xl px-6 py-12">
-        <header className="mb-10 flex items-center justify-between border-b border-border pb-6">
-          <div>
-            <Link
-              to={paths.projects.root}
-              className="text-xs text-muted-foreground hover:underline"
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6">
+      <PageHeader
+        eyebrow={project.github_url}
+        title={project.name}
+        description="Run autonomous agents to research, plan, code, test, and open pull requests."
+        actions={
+          <div className="flex items-center gap-2">
+            <ApplicationButton
+              variant="secondary"
+              iconLeft={<ArrowLeft />}
+              onClick={() => navigate(paths.projects.root)}
             >
-              ← All repositories
-            </Link>
-            <h1 className="mt-2 font-serif text-4xl leading-none tracking-[-0.01em]">
-              {project.name}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {project.github_url}
-            </p>
+              Repositories
+            </ApplicationButton>
+            <ApplicationBadge
+              variant={
+                project.status === "ready"
+                  ? "completed"
+                  : project.status === "failed"
+                    ? "failed"
+                    : "running"
+              }
+              dot
+            >
+              {project.status === "ready"
+                ? "Ready"
+                : project.status === "failed"
+                  ? "Failed"
+                  : "Cloning"}
+            </ApplicationBadge>
           </div>
-        </header>
+        }
+      />
 
-        {project.status === "pending" && (
-          <p className="mb-6 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-            Cloning repository...
-          </p>
-        )}
+      {project.status === "pending" && (
+        <ApplicationCard className="p-4 text-sm text-muted-foreground">
+          Cloning repository...
+        </ApplicationCard>
+      )}
 
-        {project.status === "failed" && (
-          <div className="mb-6 flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+      {project.status === "failed" && (
+        <ApplicationCard className="border-destructive/20 bg-destructive/5 p-4">
+          <div className="flex items-center justify-between gap-4">
             <p className="text-sm text-destructive">{project.description}</p>
-            <Button
-              variant="outline"
-              className="rounded-lg"
+            <ApplicationButton
+              variant="secondary"
               onClick={handleRetry}
               disabled={retrying}
             >
               {retrying ? "Retrying..." : "Retry"}
-            </Button>
+            </ApplicationButton>
           </div>
-        )}
-        {setupError && (
-          <p className="mb-6 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
-            {setupError}
-          </p>
-        )}
+        </ApplicationCard>
+      )}
 
-        {project.status === "ready" && (
-          <div className="grid gap-8 lg:grid-cols-3">
-            {/* Left column: setup */}
-            <div className="space-y-6 lg:col-span-1">
-              <section className="space-y-3 rounded-lg border border-border bg-card p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                    Task
-                  </h2>
-                  <button
-                    onClick={refreshIssues}
-                    disabled={issuesLoading}
-                    className="cursor-pointer text-xs text-primary hover:underline disabled:opacity-50"
-                  >
-                    {issuesLoading ? "Refreshing..." : "Refresh issues"}
-                  </button>
-                </div>
-                {issuesLoading ? (
-                  <Skeleton className="h-8 w-full" />
-                ) : (
-                  issues.length > 0 && (
-                    <Select
-                      value={selectedIssue}
-                      onValueChange={(val) => {
-                        setSelectedIssue(val)
-                        const issue = issues.find(
-                          (i) => i.number === Number(val)
-                        )
-                        if (issue)
-                          setTask(
-                            `Implement issue #${issue.number}: ${issue.title}`
-                          )
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Pick an open issue..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {issues.map((issue) => (
-                          <SelectItem
-                            key={issue.number}
-                            value={String(issue.number)}
-                          >
-                            #{issue.number} {issue.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )
-                )}
-                <textarea
-                  value={task}
-                  onChange={(e) => setTask(e.target.value)}
-                  placeholder="Describe the task, or pick an issue above..."
-                  rows={4}
-                  className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none"
-                />
-              </section>
+      {setupError && (
+        <ApplicationCard className="border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+          {setupError}
+        </ApplicationCard>
+      )}
 
-              <section className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
-                {/* Section header + key-source toggle */}
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                    Model
-                  </h2>
-                  {/* Key-source toggle pill */}
-                  <div className="flex items-center gap-1 rounded-full border border-border bg-muted p-0.5 text-xs">
-                    <button
-                      id="key-source-my-key"
-                      onClick={() => {
-                        setKeySource("my-key")
-                        // Reset model if current selection is no longer visible.
-                        const providers = availableModels?.user_providers ?? []
-                        const stillVisible =
-                          ALL_CLOUD_MODELS.some(
-                            (m) =>
-                              m.id === model && providers.includes(m.provider)
-                          ) || localModels.some((m) => m.id === model)
-                        if (!stillVisible) {
-                          const first = ALL_CLOUD_MODELS.find((m) =>
-                            providers.includes(m.provider)
-                          )
-                          setModel(first?.id ?? localModels[0]?.id ?? model)
-                        }
-                      }}
-                      className={`cursor-pointer rounded-full px-3 py-1 transition-colors ${
-                        keySource === "my-key"
-                          ? "bg-primary font-semibold text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      My API key
-                    </button>
-                    <button
-                      id="key-source-platform"
-                      onClick={() => {
-                        setKeySource("platform")
-                        const providers =
-                          availableModels?.platform_providers ?? []
-                        const stillVisible =
-                          ALL_CLOUD_MODELS.some(
-                            (m) =>
-                              m.id === model && providers.includes(m.provider)
-                          ) || localModels.some((m) => m.id === model)
-                        if (!stillVisible) {
-                          const first = ALL_CLOUD_MODELS.find((m) =>
-                            providers.includes(m.provider)
-                          )
-                          setModel(first?.id ?? localModels[0]?.id ?? model)
-                        }
-                      }}
-                      className={`cursor-pointer rounded-full px-3 py-1 transition-colors ${
-                        keySource === "platform"
-                          ? "bg-primary font-semibold text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      Platform AI
-                    </button>
-                  </div>
-                </div>
-
-                {/* Model picker — only shows models reachable under the current toggle */}
-                {visibleModels.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    {keySource === "my-key"
-                      ? "No API keys configured. Add them in Settings, or switch to Platform AI."
-                      : "No platform API keys are configured on this server."}
-                  </p>
-                ) : (
-                  <Select
-                    value={model}
-                    onValueChange={(val) => val && setModel(val)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {visibleModels.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          <span>{m.name}</span>
-                          <span className="ml-auto flex items-center gap-1.5 pl-4 text-[10px] text-muted-foreground">
-                            {m.recommended && (
-                              <span
-                                title="Best fit for coding among your installed local models"
-                                className="rounded-full bg-brand-soft px-1.5 py-0.5 font-semibold text-foreground"
-                              >
-                                Recommended
-                              </span>
-                            )}
-                            {m.group}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={skipTests}
-                    onChange={(e) => setSkipTests(e.target.checked)}
-                    className="cursor-pointer rounded border-border"
-                  />
-                  Skip tests (treat as passed — useful when the repo has no test
-                  suite, or the planner picks a bad verify command)
-                </label>
-                <div className="flex items-center gap-2">
-                  <Button
-                    className="flex-1 rounded-lg font-semibold"
-                    disabled={!canRun}
-                    onClick={handleStartRun}
-                  >
-                    {run &&
-                    !["completed", "rejected", "failed"].includes(run.status)
-                      ? "Running..."
-                      : "Run"}
-                  </Button>
-                  {run &&
-                    !["completed", "rejected", "failed"].includes(
-                      run.status
-                    ) && (
-                      <Button
-                        variant="destructive"
-                        className="cursor-pointer rounded-lg font-semibold"
-                        disabled={stoppingRun}
-                        onClick={handleStopRun}
-                      >
-                        {stoppingRun ? "Stopping..." : "Stop"}
-                      </Button>
-                    )}
-                </div>
-              </section>
-            </div>
-
-            {/* Right column: live status */}
-            <div className="space-y-6 lg:col-span-2">
-              <div className="grid gap-4 sm:grid-cols-2">
-                {AGENT_NODES.map((node) => {
-                  const state = nodeStates[node.key]
-                  return (
-                    <div
-                      key={node.key}
-                      className="space-y-1 rounded-lg border border-border bg-card p-4 shadow-sm"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 font-semibold">
-                          {node.label}
-                          <span
-                            title={node.description}
-                            className="flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-muted-foreground/40 text-[9px] leading-none text-muted-foreground"
-                          >
-                            i
-                          </span>
-                        </span>
-                        {statusDot(state.status)}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {node.blurb}
-                      </p>
-                      {state.detail && (
-                        <p className="line-clamp-2 pt-1 text-xs text-foreground/80">
-                          {state.detail}
-                        </p>
-                      )}
-                    </div>
-                  )
-                })}
+      {project.status === "ready" && (
+        <div className="grid gap-8 lg:grid-cols-3">
+          {/* Left column: setup */}
+          <div className="space-y-6 lg:col-span-1">
+            <ApplicationCard className="space-y-4 p-5 sm:p-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xs font-medium tracking-[0.12em] text-muted-foreground uppercase">
+                  Task
+                </h2>
+                <ApplicationButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={refreshIssues}
+                  disabled={issuesLoading}
+                  iconLeft={
+                    <RefreshCw
+                      className={cn("size-3", issuesLoading && "animate-spin")}
+                    />
+                  }
+                >
+                  Refresh issues
+                </ApplicationButton>
               </div>
 
-              {pendingPlan && (
-                <div className="space-y-4 rounded-lg border border-primary/30 bg-primary/5 p-6 shadow-sm">
-                  <h3 className="text-sm font-bold tracking-wider text-primary uppercase">
-                    Approval needed
-                  </h3>
-                  <p className="text-sm text-foreground">
-                    {pendingPlan.summary}
-                  </p>
-                  <ul className="list-inside list-disc space-y-1 text-xs text-muted-foreground">
-                    {pendingPlan.steps.map((step, i) => (
-                      <li key={i}>{step.description}</li>
-                    ))}
-                  </ul>
-                  <p className="font-mono text-xs text-muted-foreground">
-                    Verify with: {pendingPlan.test_command}
-                  </p>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                      Feedback (optional)
-                    </label>
-                    <textarea
-                      value={feedback}
-                      onChange={(e) => setFeedback(e.target.value)}
-                      placeholder="e.g. This is a React project — use .tsx components, not raw HTML/CSS/JS. Approve sends this as extra guidance; Reject sends it back to the planner for a revised plan."
-                      rows={2}
-                      className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none"
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <Button
-                      className="rounded-lg"
-                      onClick={() => handleApproval(true)}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="rounded-lg"
-                      onClick={() => handleApproval(false)}
-                    >
-                      {feedback.trim() ? "Reject & Revise" : "Reject"}
-                    </Button>
-                  </div>
-                </div>
+              {issuesLoading ? (
+                <Skeleton className="h-9 w-full rounded-lg" />
+              ) : (
+                issues.length > 0 && (
+                  <ApplicationSelection
+                    aria-label="Pick an open issue"
+                    options={issues.map((issue) => ({
+                      value: String(issue.number),
+                      label: `#${issue.number} ${issue.title}`,
+                    }))}
+                    value={selectedIssue}
+                    onValueChange={(val) => {
+                      setSelectedIssue(val)
+                      const issue = issues.find((i) => i.number === Number(val))
+                      if (issue) {
+                        setTask(
+                          `Implement issue #${issue.number}: ${issue.title}`
+                        )
+                      }
+                    }}
+                    placeholder="Pick an open issue…"
+                    indicator="chevron-down"
+                  />
+                )
               )}
 
-              {/* Once the run reaches a terminal state, the Result panel
-                  below shows this same message via run.error — no need to
-                  show it twice. */}
-              {streamError && run?.status !== "failed" && (
-                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
-                  {streamError}
+              <textarea
+                value={task}
+                onChange={(e) => setTask(e.target.value)}
+                placeholder="Describe the task, or pick an issue above..."
+                rows={4}
+                className="w-full resize-none rounded-lg border border-input bg-card p-3 text-xs text-foreground transition-all duration-200 outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-primary/25 dark:bg-input/20"
+              />
+            </ApplicationCard>
+
+            <ApplicationCard className="space-y-4 p-5 sm:p-6">
+              {/* Section header + key-source toggle */}
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xs font-medium tracking-[0.12em] text-muted-foreground uppercase">
+                  Model
+                </h2>
+                {/* Key-source toggle */}
+                <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/60 p-1">
+                  <ApplicationButton
+                    size="sm"
+                    variant={keySource === "my-key" ? "highlight" : "ghost"}
+                    onClick={() => {
+                      setKeySource("my-key")
+                      const providers = availableModels?.user_providers ?? []
+                      const stillVisible =
+                        ALL_CLOUD_MODELS.some(
+                          (m) =>
+                            m.id === model && providers.includes(m.provider)
+                        ) || localModels.some((m) => m.id === model)
+                      if (!stillVisible) {
+                        const first = ALL_CLOUD_MODELS.find((m) =>
+                          providers.includes(m.provider)
+                        )
+                        setModel(first?.id ?? localModels[0]?.id ?? model)
+                      }
+                    }}
+                  >
+                    My API key
+                  </ApplicationButton>
+                  <ApplicationButton
+                    size="sm"
+                    variant={keySource === "platform" ? "highlight" : "ghost"}
+                    onClick={() => {
+                      setKeySource("platform")
+                      const providers =
+                        availableModels?.platform_providers ?? []
+                      const stillVisible =
+                        ALL_CLOUD_MODELS.some(
+                          (m) =>
+                            m.id === model && providers.includes(m.provider)
+                        ) || localModels.some((m) => m.id === model)
+                      if (!stillVisible) {
+                        const first = ALL_CLOUD_MODELS.find((m) =>
+                          providers.includes(m.provider)
+                        )
+                        setModel(first?.id ?? localModels[0]?.id ?? model)
+                      }
+                    }}
+                  >
+                    Platform AI
+                  </ApplicationButton>
                 </div>
+              </div>
+
+              {/* Model picker */}
+              {visibleModels.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {keySource === "my-key"
+                    ? "No API keys configured. Add them in Settings, or switch to Platform AI."
+                    : "No platform API keys are configured on this server."}
+                </p>
+              ) : (
+                <ApplicationSelection
+                  aria-label="Select model"
+                  options={visibleModels.map((m) => ({
+                    value: m.id,
+                    label: `${m.name} (${m.group})`,
+                  }))}
+                  value={model}
+                  onValueChange={(val) => val && setModel(val)}
+                  indicator="chevron-down"
+                />
               )}
 
-              {run &&
-                ["completed", "rejected", "failed"].includes(run.status) && (
-                  <div className="space-y-2 rounded-lg border border-border bg-card p-6 shadow-sm">
-                    <h3 className="text-sm font-bold tracking-wider uppercase">
-                      Result: {run.status}
-                    </h3>
-                    {run.review_notes && (
-                      <p className="text-sm whitespace-pre-wrap text-muted-foreground">
-                        {run.review_notes}
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={skipTests}
+                  onChange={(e) => setSkipTests(e.target.checked)}
+                  className="size-4 cursor-pointer rounded border-border text-primary focus:ring-primary/25"
+                />
+                Skip tests (treat as passed — useful when repo has no test
+                suite)
+              </label>
+
+              <div className="flex items-center gap-2 pt-1">
+                <ApplicationButton
+                  className="flex-1"
+                  variant="primary"
+                  disabled={!canRun}
+                  onClick={handleStartRun}
+                >
+                  {run &&
+                  !["completed", "rejected", "failed"].includes(run.status)
+                    ? "Running..."
+                    : "Run"}
+                </ApplicationButton>
+                {run &&
+                  !["completed", "rejected", "failed"].includes(run.status) && (
+                    <ApplicationButton
+                      variant="destructive"
+                      disabled={stoppingRun}
+                      onClick={handleStopRun}
+                    >
+                      {stoppingRun ? "Stopping..." : "Stop"}
+                    </ApplicationButton>
+                  )}
+              </div>
+            </ApplicationCard>
+          </div>
+
+          {/* Right column: live status */}
+          <div className="space-y-6 lg:col-span-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {AGENT_NODES.map((node) => {
+                const state = nodeStates[node.key]
+                return (
+                  <ApplicationCard
+                    key={node.key}
+                    className="flex flex-col justify-between gap-2 p-4 transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs font-semibold">
+                        {node.label}
+                        <span
+                          title={node.description}
+                          className="flex size-3.5 cursor-help items-center justify-center rounded-full border border-muted-foreground/40 text-[9px] leading-none text-muted-foreground"
+                        >
+                          i
+                        </span>
+                      </span>
+                      {nodeBadge(state.status)}
+                    </div>
+                    <p className="text-2xs text-muted-foreground">
+                      {node.blurb}
+                    </p>
+                    {state.detail && (
+                      <p className="line-clamp-2 text-2xs text-foreground/80">
+                        {state.detail}
                       </p>
                     )}
-                    {run.pr_url && (
-                      <a
-                        href={run.pr_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-block text-sm font-semibold text-link underline"
-                      >
-                        View pull request →
-                      </a>
-                    )}
-                    {run.error && (
-                      <p className="text-sm text-destructive">{run.error}</p>
-                    )}
-                    {run.status === "failed" && (
-                      <Button
-                        onClick={handleRetryRun}
-                        disabled={retryingRun}
-                        size="sm"
-                        variant="outline"
-                        className="mt-2"
-                      >
-                        {retryingRun ? "Retrying…" : "Retry from last step"}
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-              {runHistory.length > 0 && (
-                <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                  <h3 className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                    Run history
-                  </h3>
-                  <div className="space-y-2">
-                    {runHistory.slice(0, 10).map((r) => (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => void openRun(r)}
-                        className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-start text-xs transition-colors hover:bg-muted ${run?.id === r.id ? "bg-muted" : ""}`}
-                      >
-                        <span className="truncate pr-4 text-foreground/80">
-                          {r.task}
-                        </span>
-                        <span className="shrink-0 text-muted-foreground">
-                          {RUN_STATUS[r.status].label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
+                  </ApplicationCard>
+                )
+              })}
             </div>
+
+            {pendingPlan && (
+              <ApplicationCard className="space-y-4 border-primary/40 bg-primary/5 p-6">
+                <div className="flex items-center gap-2">
+                  <ApplicationBadge variant="awaiting" dot pulseDot>
+                    Approval Needed
+                  </ApplicationBadge>
+                </div>
+                <p className="text-sm font-medium text-foreground">
+                  {pendingPlan.summary}
+                </p>
+                <ul className="list-inside list-disc space-y-1 text-xs text-muted-foreground">
+                  {pendingPlan.steps.map((step, i) => (
+                    <li key={i}>{step.description}</li>
+                  ))}
+                </ul>
+                <p className="font-mono text-2xs text-muted-foreground">
+                  Verify with:{" "}
+                  <code className="rounded bg-muted px-1.5 py-0.5">
+                    {pendingPlan.test_command}
+                  </code>
+                </p>
+                <div className="space-y-1">
+                  <label className="text-2xs font-medium tracking-[0.12em] text-muted-foreground uppercase">
+                    Feedback (optional)
+                  </label>
+                  <textarea
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                    placeholder="e.g. This is a React project — use .tsx components, not raw HTML/CSS/JS. Approve sends this as extra guidance; Reject sends it back to the planner for a revised plan."
+                    rows={2}
+                    className="w-full resize-none rounded-lg border border-input bg-card p-3 text-xs text-foreground transition-all duration-200 outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-primary/25 dark:bg-input/20"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <ApplicationButton
+                    variant="primary"
+                    onClick={() => handleApproval(true)}
+                  >
+                    Approve
+                  </ApplicationButton>
+                  <ApplicationButton
+                    variant="secondary"
+                    onClick={() => handleApproval(false)}
+                  >
+                    {feedback.trim() ? "Reject & Revise" : "Reject"}
+                  </ApplicationButton>
+                </div>
+              </ApplicationCard>
+            )}
+
+            {streamError && run?.status !== "failed" && (
+              <ApplicationCard className="border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+                {streamError}
+              </ApplicationCard>
+            )}
+
+            {run &&
+              ["completed", "rejected", "failed"].includes(run.status) && (
+                <ApplicationCard className="space-y-3 p-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-2xs font-medium tracking-[0.12em] uppercase">
+                      Result
+                    </h3>
+                    <ApplicationBadge
+                      variant={
+                        run.status === "completed"
+                          ? "completed"
+                          : run.status === "failed"
+                            ? "failed"
+                            : "neutral"
+                      }
+                      dot
+                    >
+                      {RUN_STATUS[run.status].label}
+                    </ApplicationBadge>
+                  </div>
+                  {run.review_notes && (
+                    <p className="text-xs whitespace-pre-wrap text-muted-foreground">
+                      {run.review_notes}
+                    </p>
+                  )}
+                  {run.pr_url && (
+                    <a
+                      href={run.pr_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-link hover:underline"
+                    >
+                      View pull request <ExternalLink className="size-3.5" />
+                    </a>
+                  )}
+                  {run.error && (
+                    <p className="text-xs text-destructive">{run.error}</p>
+                  )}
+                  {run.status === "failed" && (
+                    <ApplicationButton
+                      onClick={handleRetryRun}
+                      disabled={retryingRun}
+                      size="sm"
+                      variant="secondary"
+                      className="mt-2"
+                    >
+                      {retryingRun ? "Retrying…" : "Retry from last step"}
+                    </ApplicationButton>
+                  )}
+                </ApplicationCard>
+              )}
+
+            {runHistory.length > 0 && (
+              <ApplicationCard className="p-6">
+                <h3 className="mb-3 text-2xs font-medium tracking-[0.12em] text-muted-foreground uppercase">
+                  Run history
+                </h3>
+                <div className="space-y-1.5">
+                  {runHistory.slice(0, 10).map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => void openRun(r)}
+                      className={cn(
+                        "flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-start text-xs transition-colors hover:bg-muted",
+                        run?.id === r.id && "bg-muted"
+                      )}
+                    >
+                      <span className="truncate pr-4 text-foreground/80">
+                        {r.task}
+                      </span>
+                      <ApplicationBadge
+                        size="sm"
+                        variant={RUN_STATUS[r.status]?.badge ?? "neutral"}
+                      >
+                        {RUN_STATUS[r.status]?.label ?? r.status}
+                      </ApplicationBadge>
+                    </button>
+                  ))}
+                </div>
+              </ApplicationCard>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react"
 import { Link, NavLink, useLocation } from "react-router-dom"
 import { motion } from "motion/react"
-import { KeyRound, Plus, Settings, UserRound, Users } from "lucide-react"
+import {
+  KeyRound,
+  Plus,
+  Search,
+  Settings,
+  UserRound,
+  Users,
+} from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -9,7 +16,6 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
-  SidebarInput,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -20,6 +26,7 @@ import { cn } from "@workspace/ui/lib/utils"
 import type { User } from "@/api/user.api"
 import { BrandMark } from "@/components/atoms/brand-logo"
 import { BuiltBy } from "@/components/atoms/built-by"
+import { ApplicationInput } from "@/components/molecules/application/application-input"
 import { NavUser } from "@/components/molecules/common/nav-user"
 import { OrgSwitcher } from "@/components/molecules/organization/org-switcher"
 import { useOrganization } from "@/hooks/organization/use-organization"
@@ -168,8 +175,10 @@ function RepositoriesPanel({ pathname }: { pathname: string }) {
   return (
     <>
       <div className="px-3 pb-2">
-        <SidebarInput
+        <ApplicationInput
+          size="sm"
           placeholder="Search repositories…"
+          iconLeft={<Search className="size-3.5 text-muted-foreground" />}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />

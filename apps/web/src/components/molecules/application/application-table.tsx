@@ -23,7 +23,7 @@ import {
 } from "@workspace/ui/components/table"
 import { Checkbox } from "@workspace/ui/components/checkbox"
 import { ApplicationInput } from "@/components/molecules/application/application-input"
-import { buttonVariants } from "@workspace/ui/components/button"
+import { applicationButtonVariants } from "./application-button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Empty,
@@ -537,11 +537,11 @@ export function ApplicationTable<T extends Record<string, unknown>>({
             {showSearch && (
               <ApplicationInput
                 type="text"
-                size="sm"
+                size={size === "sm" ? "sm" : "default"}
                 placeholder={searchPlaceholder ?? "Search..."}
                 value={searchQueryInput}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                iconLeft={<Search />}
+                iconLeft={<Search className="size-4 text-muted-foreground" />}
                 iconRight={
                   searchQueryInput ? (
                     <button
@@ -554,7 +554,7 @@ export function ApplicationTable<T extends Record<string, unknown>>({
                     </button>
                   ) : undefined
                 }
-                containerClassName="w-full max-w-xs sm:w-64"
+                containerClassName="w-full max-w-sm sm:w-80"
               />
             )}
           </div>
@@ -563,10 +563,10 @@ export function ApplicationTable<T extends Record<string, unknown>>({
             {sortableColumns.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "icon" }),
-                    "h-9 w-9 shrink-0 cursor-pointer rounded-lg border-input bg-background text-muted-foreground shadow-2xs transition-colors hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-primary/25"
-                  )}
+                  className={applicationButtonVariants({
+                    variant: "secondary",
+                    size: size === "sm" ? "icon-sm" : "icon",
+                  })}
                   title={"Sort Options"}
                   aria-label={"Sort options"}
                 >

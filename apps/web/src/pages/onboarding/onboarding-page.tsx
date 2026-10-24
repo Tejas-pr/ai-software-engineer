@@ -6,6 +6,7 @@ import { completeOnboarding } from "@/api/account.api"
 import { listOrganizations, type Organization } from "@/api/organizations.api"
 import { listApiKeys } from "@/api/settings.api"
 import { AuthNotice } from "@/components/molecules/auth/auth-notice"
+import { ApplicationButton } from "@/components/molecules/application/application-button"
 import { OnboardingStepper } from "@/components/molecules/onboarding/onboarding-stepper"
 import { ModelStep } from "@/components/organisms/onboarding/model-step"
 import { OrganizationStep } from "@/components/organisms/onboarding/organization-step"
@@ -147,13 +148,14 @@ export function OnboardingPage() {
       </AnimatePresence>
 
       {step > 0 && !isFinishing && (
-        <button
-          type="button"
+        <ApplicationButton
+          variant="ghost"
+          size="sm"
           onClick={() => setStep(step - 1)}
-          className="self-start text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          className="self-start text-xs text-muted-foreground"
         >
           ← Back
-        </button>
+        </ApplicationButton>
       )}
     </div>
   )

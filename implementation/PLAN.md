@@ -113,8 +113,12 @@ Product
 - [ ] Organization slug in URLs (`/:org/...`) instead of per-browser choice
 - [ ] Record token usage per run → cost on the usage panel
 - [ ] Per-organization shared API keys (today keys are per user)
-- [ ] Restyle the project detail (run) page with the new components
-      (it still uses its original layout inside the new shell)
+- [x] Restyle the project detail (run) page with the new components
+      (ApplicationCard, ApplicationButton, ApplicationSelection, PageHeader,
+      and ApplicationBadge)
+- [x] Unify toolbar search inputs, filters, and action buttons across all
+      views with consistent height (36px / h-9), border-radius (8px / rounded-lg),
+      and semantic token styling.
 
 Reliability and hardening (see `kb/known-issues.md`)
 - [ ] Cancel that interrupts the running node, not just between steps

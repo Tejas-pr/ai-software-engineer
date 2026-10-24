@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { ExternalLink } from "lucide-react"
+import { ExternalLink, ListFilter } from "lucide-react"
 import type { RunListItem, RunStatus } from "@/api/agent.api"
 import { ApplicationBadge } from "@/components/molecules/application/application-badge"
 import { ApplicationSelection } from "@/components/molecules/application/application-selection"
@@ -141,7 +141,8 @@ export function RunsPage() {
             options={STATUS_OPTIONS}
             value={status}
             onValueChange={(v) => setStatus(v ?? ALL)}
-            className="w-44"
+            className="w-48"
+            iconLeft={<ListFilter className="size-4" />}
             indicator="chevron-down"
           />
         }
