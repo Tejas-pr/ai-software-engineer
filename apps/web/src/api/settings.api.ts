@@ -77,39 +77,50 @@ export async function deleteApiKey(provider: string): Promise<void> {
 }
 
 export interface SystemTelemetry {
-  cpu_count: number
+  cpu_count?: number
+  cpu_cores?: number
   platform: string
-  arch: string
-  accelerator: "metal" | "cuda" | "rocm" | "none"
-  accelerator_name: string
+  arch?: string
+  cpu_arch?: string
+  accelerator: string
+  accelerator_name?: string
+  total_ram_gb?: number | null
   memory: {
     total_gb: number
     available_gb: number
     percent_used: number
   } | null
+  disk_total_gb?: number
+  disk_free_gb?: number
   disk: {
     total_gb: number
     used_gb: number
     free_gb: number
     percent_used: number
   }
-  workspaces_used_bytes: number
-  workspaces_used_mb: number
+  workspaces_bytes?: number
+  workspaces_used_bytes?: number
+  workspaces_size_mb?: number
+  workspaces_used_mb?: number
 }
 
 export interface OllamaLoadedModel {
   name: string
-  model: string
-  size: number
-  size_vram: number
+  model?: string
+  size?: number
+  size_vram?: number
+  size_vram_gb?: number
   expires_at?: string
 }
 
 export interface OllamaHardwareInfo {
-  available: boolean
-  host: string
+  available?: boolean
+  reachable?: boolean
+  host?: string
+  base_url?: string
   version: string | null
-  loaded_models: OllamaLoadedModel[]
+  loaded_models?: OllamaLoadedModel[]
+  running_models?: OllamaLoadedModel[]
   error: string | null
 }
 

@@ -46,7 +46,7 @@ export function RouteErrorBoundary() {
         </ApplicationButton>
         <Link
           to={paths.home}
-          className={applicationButtonVariants({ variant: "outline" })}
+          className={applicationButtonVariants({ variant: "secondary" })}
         >
           Back to home
         </Link>

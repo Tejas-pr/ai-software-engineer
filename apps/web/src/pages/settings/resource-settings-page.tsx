@@ -90,7 +90,11 @@ export function ResourceSettingsPage() {
     try {
       const res = await getResourceSettings()
       setData(res)
-      setLimits(res.limits)
+      setLimits((prev) => ({
+        ...DEFAULT_LIMITS,
+        ...prev,
+        ...(res.limits || {}),
+      }))
       if (showRefreshToast) {
         toast.add({
           title: "Hardware telemetry updated",
@@ -115,7 +119,11 @@ export function ResourceSettingsPage() {
       .then((res) => {
         if (!active) return
         setData(res)
-        setLimits(res.limits)
+        setLimits((prev) => ({
+          ...DEFAULT_LIMITS,
+          ...prev,
+          ...(res.limits || {}),
+        }))
         setIsLoading(false)
       })
       .catch(() => {
@@ -244,11 +252,13 @@ export function ResourceSettingsPage() {
               <Cpu className="size-4 text-primary" />
             </div>
             <ApplicationCardTitle className="mt-1 text-lg font-bold">
-              {telemetry ? `${telemetry.cpu_count} Cores` : "—"}
+              {telemetry
+                ? `${telemetry.cpu_count ?? telemetry.cpu_cores ?? "—"} Cores`
+                : "—"}
             </ApplicationCardTitle>
             <ApplicationCardDescription className="truncate text-2xs">
               {telemetry
-                ? `${telemetry.platform} · ${telemetry.arch}`
+                ? `${telemetry.platform ?? "Host"} · ${telemetry.arch ?? telemetry.cpu_arch ?? ""}`
                 : "Host hardware"}
             </ApplicationCardDescription>
           </ApplicationCardHeader>
@@ -257,11 +267,15 @@ export function ResourceSettingsPage() {
               <ApplicationBadge
                 size="sm"
                 variant={
-                  telemetry?.accelerator !== "none" ? "default" : "neutral"
+                  telemetry?.accelerator && telemetry.accelerator !== "none"
+                    ? "default"
+                    : "neutral"
                 }
                 dot
               >
-                {telemetry?.accelerator_name || "CPU Standard"}
+                {telemetry?.accelerator_name ||
+                  telemetry?.accelerator ||
+                  "CPU Standard"}
               </ApplicationBadge>
             </div>
           </ApplicationCardContent>
@@ -277,31 +291,35 @@ export function ResourceSettingsPage() {
               <Activity className="size-4 text-primary" />
             </div>
             <ApplicationCardTitle className="mt-1 text-lg font-bold">
-              {telemetry?.memory
-                ? `${telemetry.memory.total_gb.toFixed(1)} GB`
+              {typeof (
+                telemetry?.memory?.total_gb ?? telemetry?.total_ram_gb
+              ) === "number"
+                ? `${Number(telemetry?.memory?.total_gb ?? telemetry?.total_ram_gb).toFixed(1)} GB`
                 : "Host RAM"}
             </ApplicationCardTitle>
             <ApplicationCardDescription className="truncate text-2xs">
-              {telemetry?.memory
-                ? `${telemetry.memory.available_gb.toFixed(1)} GB free (${telemetry.memory.percent_used}% used)`
+              {typeof (
+                telemetry?.memory?.available_gb ?? telemetry?.total_ram_gb
+              ) === "number"
+                ? `${Number(telemetry?.memory?.available_gb ?? telemetry?.total_ram_gb).toFixed(1)} GB available`
                 : "System RAM telemetry"}
             </ApplicationCardDescription>
           </ApplicationCardHeader>
           <ApplicationCardContent className="px-4 pt-1 pb-4">
-            {telemetry?.memory && (
+            {typeof telemetry?.memory?.percent_used === "number" && (
               <div className="mt-1 flex flex-col gap-1">
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                   <div
                     className={cn(
                       "h-full transition-all duration-300",
-                      telemetry.memory.percent_used > 85
+                      (telemetry.memory.percent_used ?? 0) > 85
                         ? "bg-destructive"
-                        : telemetry.memory.percent_used > 70
+                        : (telemetry.memory.percent_used ?? 0) > 70
                           ? "bg-amber-500"
                           : "bg-primary"
                     )}
                     style={{
-                      width: `${Math.min(100, telemetry.memory.percent_used)}%`,
+                      width: `${Math.min(100, telemetry.memory.percent_used ?? 0)}%`,
                     }}
                   />
                 </div>
@@ -320,15 +338,15 @@ export function ResourceSettingsPage() {
               <Sparkles className="size-4 text-primary" />
             </div>
             <ApplicationCardTitle className="mt-1 text-lg font-bold">
-              {ollama?.available
+              {ollama?.available || ollama?.reachable
                 ? ollama.version
                   ? `v${ollama.version}`
                   : "Online"
                 : "Offline"}
             </ApplicationCardTitle>
             <ApplicationCardDescription className="truncate text-2xs">
-              {ollama?.available
-                ? `${ollama.loaded_models.length} model(s) warm in VRAM`
+              {ollama?.available || ollama?.reachable
+                ? `${(ollama?.loaded_models ?? ollama?.running_models ?? []).length} model(s) warm in VRAM`
                 : "Daemon unreachable on :11434"}
             </ApplicationCardDescription>
           </ApplicationCardHeader>
@@ -336,11 +354,17 @@ export function ResourceSettingsPage() {
             <div className="flex items-center gap-1.5 pt-1">
               <ApplicationBadge
                 size="sm"
-                variant={ollama?.available ? "default" : "destructive"}
+                variant={
+                  ollama?.available || ollama?.reachable
+                    ? "default"
+                    : "destructive"
+                }
                 dot
-                pulseDot={ollama?.available}
+                pulseDot={Boolean(ollama?.available || ollama?.reachable)}
               >
-                {ollama?.available ? "Connected" : "Not running"}
+                {ollama?.available || ollama?.reachable
+                  ? "Connected"
+                  : "Not running"}
               </ApplicationBadge>
             </div>
           </ApplicationCardContent>
@@ -356,13 +380,17 @@ export function ResourceSettingsPage() {
               <HardDrive className="size-4 text-primary" />
             </div>
             <ApplicationCardTitle className="mt-1 text-lg font-bold">
-              {telemetry
-                ? `${telemetry.workspaces_used_mb.toFixed(1)} MB`
-                : "—"}
+              {typeof (
+                telemetry?.workspaces_used_mb ?? telemetry?.workspaces_size_mb
+              ) === "number"
+                ? `${Number(telemetry?.workspaces_used_mb ?? telemetry?.workspaces_size_mb).toFixed(1)} MB`
+                : "0.0 MB"}
             </ApplicationCardTitle>
             <ApplicationCardDescription className="truncate text-2xs">
-              Quota: {limits.workspace_storage_limit_gb} GB (
-              {disk ? `${disk.free_gb.toFixed(0)} GB free on host` : ""})
+              Quota: {limits.workspace_storage_limit_gb} GB
+              {typeof (disk?.free_gb ?? telemetry?.disk_free_gb) === "number"
+                ? ` (${Number(disk?.free_gb ?? telemetry?.disk_free_gb).toFixed(0)} GB free)`
+                : ""}
             </ApplicationCardDescription>
           </ApplicationCardHeader>
           <ApplicationCardContent className="px-4 pt-1 pb-4">
@@ -373,8 +401,13 @@ export function ResourceSettingsPage() {
                   style={{
                     width: `${Math.min(
                       100,
-                      ((telemetry?.workspaces_used_mb ?? 0) /
-                        (limits.workspace_storage_limit_gb * 1024)) *
+                      (Number(
+                        telemetry?.workspaces_used_mb ??
+                          telemetry?.workspaces_size_mb ??
+                          0
+                      ) /
+                        (Math.max(1, limits.workspace_storage_limit_gb) *
+                          1024)) *
                         100
                     )}%`,
                   }}
@@ -737,7 +770,7 @@ export function ResourceSettingsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
           <ApplicationButton
             type="button"
-            variant="ghost"
+            variant="secondary"
             size="default"
             onClick={handleReset}
             iconLeft={<RotateCcw className="size-4" />}

@@ -81,7 +81,7 @@ export function DashboardPage() {
         <ViewToggle value={view} onChange={setView} />
         <DropdownMenu>
           <DropdownMenuTrigger
-            className={applicationButtonVariants({ variant: "highlight" })}
+            className={applicationButtonVariants({ variant: "primary" })}
           >
             Add new
             <ChevronDown className="size-4 opacity-70" />

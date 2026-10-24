@@ -692,14 +692,14 @@ export function ProjectDetailPage() {
       )}
 
       {project.status === "ready" && (
-        <div className="grid gap-6 lg:grid-cols-12">
+        <div className="grid gap-5 lg:grid-cols-12">
           {/* LEFT COLUMN: Mission Control & Task Launcher */}
-          <div className="space-y-6 self-start lg:sticky lg:top-4 lg:col-span-5 xl:col-span-4">
-            <ApplicationCard className="space-y-5 p-5">
-              <div className="flex items-center justify-between border-b border-border pb-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="size-4 text-primary" />
-                  <h2 className="text-xs font-semibold tracking-wider text-foreground uppercase">
+          <div className="space-y-4 self-start lg:sticky lg:top-4 lg:col-span-4">
+            <ApplicationCard className="space-y-3 p-3.5 sm:p-4">
+              <div className="flex items-center justify-between border-b border-border/80 pb-2.5">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="size-3.5 text-primary" />
+                  <h2 className="text-2xs font-semibold tracking-wider text-foreground uppercase">
                     Task Launcher
                   </h2>
                 </div>
@@ -708,10 +708,13 @@ export function ProjectDetailPage() {
                   size="sm"
                   onClick={refreshIssues}
                   disabled={issuesLoading}
-                  className="h-7 px-2 text-2xs"
+                  className="h-6 px-1.5 text-3xs"
                   iconLeft={
                     <RefreshCw
-                      className={cn("size-3", issuesLoading && "animate-spin")}
+                      className={cn(
+                        "size-2.5",
+                        issuesLoading && "animate-spin"
+                      )}
                     />
                   }
                 >
@@ -720,17 +723,17 @@ export function ProjectDetailPage() {
               </div>
 
               {/* Quick Template Chips */}
-              <div className="space-y-2">
-                <span className="text-2xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
+              <div className="space-y-1">
+                <span className="text-3xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
                   Quick suggestions
                 </span>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1">
                   {QUICK_TEMPLATES.map((tmpl) => (
                     <button
                       key={tmpl.label}
                       type="button"
                       onClick={() => setTask(tmpl.text)}
-                      className="rounded-md border border-border/70 bg-muted/40 px-2 py-1 text-2xs text-muted-foreground transition-colors hover:border-primary/50 hover:bg-muted hover:text-foreground"
+                      className="rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 text-3xs text-muted-foreground transition-colors hover:border-primary/50 hover:bg-muted hover:text-foreground"
                     >
                       {tmpl.label}
                     </button>
@@ -740,11 +743,12 @@ export function ProjectDetailPage() {
 
               {/* GitHub Issue Picker */}
               {issues.length > 0 && (
-                <div className="space-y-1.5">
-                  <label className="text-2xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
+                <div className="space-y-1">
+                  <label className="text-3xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
                     Connect GitHub Issue
                   </label>
                   <ApplicationSelection
+                    size="sm"
                     aria-label="Pick an open issue"
                     options={issues.map((issue) => ({
                       value: String(issue.number),
@@ -765,8 +769,8 @@ export function ProjectDetailPage() {
               )}
 
               {/* Task Textarea */}
-              <div className="space-y-1.5">
-                <label className="text-2xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
+              <div className="space-y-1">
+                <label className="text-3xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
                   Task Prompt
                 </label>
                 <div className="relative">
@@ -784,23 +788,23 @@ export function ProjectDetailPage() {
                       }
                     }}
                     placeholder="Describe what the agent team should research, write, and test..."
-                    rows={4}
-                    className="w-full resize-none rounded-lg border border-input bg-card p-3 font-sans text-xs text-foreground outline-hidden transition-all duration-150 placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-primary/20 dark:bg-input/20"
+                    rows={3}
+                    className="w-full resize-none rounded-md border border-input bg-card p-2.5 font-sans text-xs text-foreground outline-hidden transition-all duration-150 placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-primary/20 dark:bg-input/20"
                   />
-                  <div className="pointer-events-none absolute right-2.5 bottom-2.5 hidden items-center gap-1 text-3xs text-muted-foreground sm:flex">
+                  <div className="pointer-events-none absolute right-2 bottom-2 hidden items-center gap-1 text-3xs text-muted-foreground sm:flex">
                     <Kbd>⌘↵</Kbd>
                   </div>
                 </div>
               </div>
 
               {/* Model Settings Block */}
-              <div className="space-y-3.5 rounded-lg border border-border/80 bg-muted/20 p-3.5">
+              <div className="space-y-2 rounded-lg border border-border/70 bg-muted/20 p-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-2xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
+                  <span className="text-3xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
                     Inference Model
                   </span>
                   {/* Key Source Toggle */}
-                  <div className="inline-flex rounded-md border border-border bg-card p-0.5">
+                  <div className="inline-flex rounded border border-border bg-card p-0.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -819,7 +823,7 @@ export function ProjectDetailPage() {
                         }
                       }}
                       className={cn(
-                        "rounded px-2 py-0.5 text-3xs font-medium transition-colors",
+                        "rounded px-1.5 py-0.5 text-3xs font-medium transition-colors",
                         keySource === "my-key"
                           ? "bg-highlight text-highlight-foreground shadow-xs"
                           : "text-muted-foreground hover:text-foreground"
@@ -846,7 +850,7 @@ export function ProjectDetailPage() {
                         }
                       }}
                       className={cn(
-                        "rounded px-2 py-0.5 text-3xs font-medium transition-colors",
+                        "rounded px-1.5 py-0.5 text-3xs font-medium transition-colors",
                         keySource === "platform"
                           ? "bg-highlight text-highlight-foreground shadow-xs"
                           : "text-muted-foreground hover:text-foreground"
@@ -865,6 +869,7 @@ export function ProjectDetailPage() {
                   </p>
                 ) : (
                   <ApplicationSelection
+                    size="sm"
                     aria-label="Select model"
                     options={visibleModels.map((m) => ({
                       value: m.id,
@@ -876,30 +881,30 @@ export function ProjectDetailPage() {
                   />
                 )}
 
-                <label className="flex cursor-pointer items-center gap-2 pt-1 text-2xs text-muted-foreground select-none">
+                <label className="flex cursor-pointer items-center gap-1.5 pt-0.5 text-2xs text-muted-foreground select-none">
                   <input
                     type="checkbox"
                     checked={skipTests}
                     onChange={(e) => setSkipTests(e.target.checked)}
-                    className="size-3.5 cursor-pointer rounded border-border text-primary focus:ring-primary/25"
+                    className="size-3 cursor-pointer rounded border-border text-primary focus:ring-primary/25"
                   />
                   <span>Skip test verification (treat suite as passed)</span>
                 </label>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-2 pt-0.5">
                 <ApplicationButton
-                  className="flex-1 font-semibold"
+                  className="h-8 flex-1 text-xs font-semibold"
                   variant="primary"
-                  size="default"
+                  size="sm"
                   disabled={!canRun}
                   onClick={handleStartRun}
                   iconLeft={
                     isLive ? (
-                      <RefreshCw className="size-3.5 animate-spin" />
+                      <RefreshCw className="size-3 animate-spin" />
                     ) : (
-                      <Play className="size-3.5" />
+                      <Play className="size-3" />
                     )
                   }
                 >
@@ -909,10 +914,11 @@ export function ProjectDetailPage() {
                 {isLive && (
                   <ApplicationButton
                     variant="destructive"
-                    size="default"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
                     disabled={stoppingRun}
                     onClick={handleStopRun}
-                    iconLeft={<Square className="size-3.5" />}
+                    iconLeft={<Square className="size-3" />}
                   >
                     {stoppingRun ? "Stopping…" : "Stop"}
                   </ApplicationButton>
@@ -922,7 +928,7 @@ export function ProjectDetailPage() {
           </div>
 
           {/* RIGHT COLUMN: Execution Pipeline, Approval, Console & History */}
-          <div className="space-y-6 lg:col-span-7 xl:col-span-8">
+          <div className="space-y-6 lg:col-span-8">
             {/* Active Run Overview Banner */}
             {run && (
               <ApplicationCard className="flex flex-col gap-3 border-border/80 p-4 sm:flex-row sm:items-center sm:justify-between">

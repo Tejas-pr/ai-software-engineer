@@ -55,16 +55,39 @@ def get_system_telemetry() -> dict[str, Any]:
         pass
 
     workspaces_size_mb = round(workspaces_bytes / (1024**2), 2)
+    disk_used_gb = round((disk.total - disk.free) / (1024**3), 1)
+    disk_percent = (
+        round((disk_used_gb / disk_total_gb) * 100, 1) if disk_total_gb > 0 else 0.0
+    )
 
     return {
         "cpu_cores": cpu_cores,
+        "cpu_count": cpu_cores,
         "cpu_arch": cpu_arch,
+        "arch": cpu_arch,
         "platform": os_name,
         "total_ram_gb": total_ram_gb,
+        "memory": {
+            "total_gb": total_ram_gb or 0.0,
+            "available_gb": total_ram_gb or 0.0,
+            "percent_used": 0.0,
+        }
+        if total_ram_gb is not None
+        else None,
         "accelerator": accelerator,
+        "accelerator_name": accelerator,
         "disk_total_gb": disk_total_gb,
         "disk_free_gb": disk_free_gb,
+        "disk": {
+            "total_gb": disk_total_gb,
+            "used_gb": disk_used_gb,
+            "free_gb": disk_free_gb,
+            "percent_used": disk_percent,
+        },
+        "workspaces_bytes": workspaces_bytes,
+        "workspaces_used_bytes": workspaces_bytes,
         "workspaces_size_mb": workspaces_size_mb,
+        "workspaces_used_mb": workspaces_size_mb,
     }
 
 
@@ -73,6 +96,7 @@ def get_ollama_hardware_info() -> dict[str, Any]:
     reachable = False
     version: str | None = None
     running_models: list[dict[str, Any]] = []
+    loaded_models: list[dict[str, Any]] = []
 
     try:
         with httpx.Client(base_url=settings.OLLAMA_BASE_URL, timeout=1.5) as client:
@@ -84,10 +108,21 @@ def get_ollama_hardware_info() -> dict[str, Any]:
             ps_res = client.get("/api/ps")
             if ps_res.is_success:
                 for m in ps_res.json().get("models", []):
+                    model_name = m.get("name") or m.get("model") or "unknown"
+                    vram_bytes = m.get("size_vram", 0)
                     running_models.append(
                         {
-                            "name": m.get("name") or m.get("model"),
-                            "size_vram_gb": round(m.get("size_vram", 0) / (1024**3), 2),
+                            "name": model_name,
+                            "size_vram_gb": round(vram_bytes / (1024**3), 2),
+                            "expires_at": m.get("expires_at"),
+                        }
+                    )
+                    loaded_models.append(
+                        {
+                            "name": model_name,
+                            "model": model_name,
+                            "size": m.get("size", 0),
+                            "size_vram": vram_bytes,
                             "expires_at": m.get("expires_at"),
                         }
                     )
@@ -96,9 +131,13 @@ def get_ollama_hardware_info() -> dict[str, Any]:
 
     return {
         "reachable": reachable,
+        "available": reachable,
         "version": version,
         "base_url": settings.OLLAMA_BASE_URL,
+        "host": settings.OLLAMA_BASE_URL,
         "running_models": running_models,
+        "loaded_models": loaded_models,
+        "error": None if reachable else "Could not connect to Ollama daemon",
     }
 
 
