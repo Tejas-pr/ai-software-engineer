@@ -1,245 +1,186 @@
-import { useEffect, useState } from "react"
-import axios from "axios"
-import { useNavigate } from "react-router-dom"
-import { Button } from "@workspace/ui/components/button"
+import { useEffect, useMemo, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import { FolderGit2, Plus, Search } from "lucide-react"
 import { Skeleton } from "@workspace/ui/components/skeleton"
-import { ApplicationBadge } from "@/components/molecules/application/application-badge"
-import { projectPath } from "@/lib/common/paths"
+import { toast } from "@workspace/ui/components/toast"
 import {
-  connectProject,
-  listGithubRepos,
-  listProjects,
+  deleteProject,
   reconnectProject,
-  type GithubRepo,
+  reindexProject,
   type Project,
 } from "@/api/projects.api"
+import { ApplicationButton } from "@/components/molecules/application/application-button"
+import { ApplicationInput } from "@/components/molecules/application/application-input"
+import { ApplicationPopup } from "@/components/molecules/application/application-popup"
+import { PageHeader } from "@/components/molecules/common/page-header"
+import {
+  ViewToggle,
+  type ListView,
+} from "@/components/molecules/common/view-toggle"
+import { ConnectRepositoryPopup } from "@/components/organisms/projects/connect-repository-popup"
+import { ProjectList } from "@/components/organisms/projects/project-list"
+import { useOrganization } from "@/hooks/organization/use-organization"
+import {
+  notifyOrgDataChanged,
+  useOrgProjects,
+  useOrgRuns,
+} from "@/hooks/organization/use-org-data"
+import { describeError } from "@/lib/common/api-error"
+import { projectPath } from "@/lib/common/paths"
+import { latestRunByProject } from "@/lib/common/runs"
 
-function describeError(err: unknown, fallback: string): string {
-  if (axios.isAxiosError(err)) {
-    return (
-      (err.response?.data as { detail?: string } | undefined)?.detail ||
-      fallback
-    )
-  }
-  return fallback
-}
-
-function statusBadge(status: Project["status"]) {
-  const variant = {
-    ready: "completed",
-    pending: "running",
-    failed: "failed",
-  } as const
-  return (
-    <ApplicationBadge
-      variant={variant[status]}
-      size="sm"
-      dot
-      pulseDot={status === "pending"}
-    >
-      {status}
-    </ApplicationBadge>
-  )
-}
+// While a clone or an index is in progress, re-read the list this often
+const POLL_MS = 3000
 
 export function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [projectsLoading, setProjectsLoading] = useState(true)
-  const [repos, setRepos] = useState<GithubRepo[] | null>(null)
-  const [reposLoading, setReposLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [busyUrl, setBusyUrl] = useState<string | null>(null)
+  const { current } = useOrganization()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { projects, reload } = useOrgProjects(current.id)
+  const { runs } = useOrgRuns(current.id)
+  const [query, setQuery] = useState("")
+  const [view, setView] = useState<ListView>("list")
+  const [disconnecting, setDisconnecting] = useState<Project | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
+  const isConnectOpen = searchParams.get("connect") === "1"
+  const setConnectOpen = (open: boolean) =>
+    setSearchParams(open ? { connect: "1" } : {}, { replace: true })
+
+  const busy = (projects ?? []).some(
+    (p) => p.status === "pending" || p.index_status === "indexing"
+  )
   useEffect(() => {
-    listProjects()
-      .then(setProjects)
-      .catch(() => {})
-      .finally(() => setProjectsLoading(false))
-  }, [])
+    if (!busy) return
+    const timer = window.setInterval(reload, POLL_MS)
+    return () => window.clearInterval(timer)
+  }, [busy, reload])
 
-  const loadRepos = async () => {
-    setReposLoading(true)
-    setError(null)
+  const latestRuns = useMemo(() => latestRunByProject(runs), [runs])
+  const shown = useMemo(
+    () =>
+      (projects ?? []).filter((p) =>
+        p.name.toLowerCase().includes(query.trim().toLowerCase())
+      ),
+    [projects, query]
+  )
+  const connectedUrls = useMemo(
+    () => new Set((projects ?? []).map((p) => p.github_url)),
+    [projects]
+  )
+
+  async function act(action: () => Promise<unknown>, failure: string) {
     try {
-      const allRepos = await listGithubRepos()
-      const connectedUrls = new Set(projects.map((p) => p.github_url))
-      setRepos(allRepos.filter((r) => !connectedUrls.has(r.url)))
+      await action()
+      notifyOrgDataChanged()
     } catch (err) {
-      setError(
-        describeError(
-          err,
-          "Couldn't load your GitHub repos. Try again in a moment."
-        )
-      )
-    } finally {
-      setReposLoading(false)
+      toast.add({
+        title: failure,
+        description: describeError(err, ""),
+        type: "error",
+      })
     }
   }
 
-  const handleConnect = async (repo: GithubRepo) => {
-    setBusyUrl(repo.url)
-    setError(null)
-    try {
-      const project = await connectProject(repo)
-      navigate(projectPath(project.id))
-    } catch (err) {
-      setError(describeError(err, "Couldn't connect that repo. Try again."))
-      setBusyUrl(null)
-    }
-  }
-
-  const handleRetry = async (project: Project) => {
-    setBusyUrl(project.github_url)
-    setError(null)
-    try {
-      const updated = await reconnectProject(project)
-      navigate(projectPath(updated.id))
-    } catch (err) {
-      setError(describeError(err, "Couldn't reconnect that repo. Try again."))
-      setBusyUrl(null)
-    }
+  async function confirmDisconnect() {
+    if (!disconnecting) return
+    setIsDeleting(true)
+    await act(() => deleteProject(disconnecting.id), "Couldn't disconnect it")
+    setIsDeleting(false)
+    setDisconnecting(null)
   }
 
   return (
-    <div className="text-foreground">
-      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">
-        <header className="mb-10 flex flex-col gap-2 border-b border-border pb-8">
-          <span className="text-2xs font-medium tracking-[0.12em] text-muted-foreground uppercase">
-            Workspace
-          </span>
-          <h1 className="font-serif text-4xl leading-none tracking-[-0.01em]">
-            Your repositories
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Open a connected repository to hand the agent a task, or connect a
-            new one from GitHub.
-          </p>
-        </header>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6">
+      <PageHeader
+        eyebrow={current.name}
+        title="Repositories"
+        description="Connected GitHub repositories. Each one is cloned into its own workspace and indexed so the researcher can search it."
+        actions={
+          <ApplicationButton
+            iconLeft={<Plus />}
+            onClick={() => setConnectOpen(true)}
+          >
+            Connect repository
+          </ApplicationButton>
+        }
+      />
 
-        {error && (
-          <p className="mb-6 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-
-        <section className="mb-10">
-          <h2 className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-            Your repositories
-          </h2>
-          {projectsLoading ? (
-            <div className="space-y-2">
-              {[1, 2].map((n) => (
-                <div
-                  key={n}
-                  className="flex items-center justify-between rounded-lg border border-border bg-card p-4 shadow-sm"
-                >
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-1/3" />
-                    <Skeleton className="h-3 w-1/4" />
-                  </div>
-                  <Skeleton className="h-7 w-12 rounded-lg" />
-                </div>
-              ))}
-            </div>
-          ) : projects.length === 0 ? (
-            <p className="rounded-lg border border-border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
-              No repositories connected yet — pick one below to get started.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {projects.map((project) => (
-                <div
-                  key={project.id}
-                  className="flex items-center justify-between rounded-lg border border-border bg-card p-4 shadow-sm transition-colors hover:border-border/80"
-                >
-                  <div>
-                    <div className="text-sm font-semibold">{project.name}</div>
-                    <div className="mt-1 flex items-center gap-2">
-                      {statusBadge(project.status)}
-                      {project.status === "failed" && project.description && (
-                        <span className="max-w-md truncate text-xs text-muted-foreground">
-                          {project.description}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {project.status === "failed" ? (
-                    <Button
-                      variant="outline"
-                      className="rounded-lg"
-                      disabled={busyUrl === project.github_url}
-                      onClick={() => handleRetry(project)}
-                    >
-                      {busyUrl === project.github_url ? "Retrying..." : "Retry"}
-                    </Button>
-                  ) : (
-                    <Button
-                      className="rounded-lg font-semibold"
-                      onClick={() => navigate(projectPath(project.id))}
-                    >
-                      Open
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section>
-          <h2 className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-            Connect a repository
-          </h2>
-          {reposLoading ? (
-            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-2">
-              {[1, 2, 3].map((n) => (
-                <div
-                  key={n}
-                  className="flex w-full items-center justify-between rounded-md px-3 py-2"
-                >
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-3.5 w-16" />
-                </div>
-              ))}
-            </div>
-          ) : repos === null ? (
-            <Button
-              variant="outline"
-              className="rounded-lg font-semibold"
-              onClick={loadRepos}
-              disabled={reposLoading}
-            >
-              + Connect a GitHub repo
-            </Button>
-          ) : repos.length === 0 ? (
-            <p className="rounded-lg border border-border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
-              Nothing left to connect — every repo you have access to is already
-              here.
-            </p>
-          ) : (
-            <div className="space-y-1 rounded-lg border border-border bg-muted/30 p-2">
-              {repos.map((repo) => (
-                <button
-                  key={repo.url}
-                  onClick={() => handleConnect(repo)}
-                  disabled={busyUrl === repo.url}
-                  className="flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
-                >
-                  <span className="font-medium">{repo.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {busyUrl === repo.url
-                      ? "Connecting..."
-                      : repo.private
-                        ? "private"
-                        : "public"}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
+      <div className="flex items-center gap-2">
+        <ApplicationInput
+          placeholder="Search repositories…"
+          iconLeft={<Search />}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          containerClassName="min-w-0 flex-1"
+        />
+        <ViewToggle value={view} onChange={setView} />
       </div>
+
+      {projects === null ? (
+        <Skeleton className="h-64 rounded-xl" />
+      ) : projects.length === 0 ? (
+        <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed px-6 py-16 text-center">
+          <span className="flex size-11 items-center justify-center rounded-xl border bg-card">
+            <FolderGit2 className="size-5 text-muted-foreground" />
+          </span>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            No repositories in {current.name} yet.
+          </p>
+          <ApplicationButton
+            iconLeft={<Plus />}
+            onClick={() => setConnectOpen(true)}
+          >
+            Connect a repository
+          </ApplicationButton>
+        </div>
+      ) : shown.length === 0 ? (
+        <p className="rounded-xl border px-4 py-8 text-center text-xs text-muted-foreground">
+          No repository matches “{query}”.
+        </p>
+      ) : (
+        <ProjectList
+          projects={shown}
+          latestRuns={latestRuns}
+          view={view}
+          actions={{
+            onReindex: (p) =>
+              act(() => reindexProject(p.id), "Couldn't start indexing"),
+            onRetryClone: (p) =>
+              act(() => reconnectProject(p), "Couldn't retry the clone"),
+            onDisconnect: setDisconnecting,
+          }}
+        />
+      )}
+
+      <ConnectRepositoryPopup
+        isOpen={isConnectOpen}
+        onClose={() => setConnectOpen(false)}
+        organizationId={current.id}
+        connectedUrls={connectedUrls}
+        onConnected={(project) => {
+          notifyOrgDataChanged()
+          navigate(projectPath(project.id))
+        }}
+      />
+
+      <ApplicationPopup
+        isOpen={disconnecting !== null}
+        onClose={() => setDisconnecting(null)}
+        size="sm"
+        title={`Disconnect ${disconnecting?.name ?? ""}?`}
+        description="Its runs, search index and cloned workspace are deleted. The repository on GitHub isn't touched."
+        secondaryAction={{
+          label: "Cancel",
+          onClick: () => setDisconnecting(null),
+        }}
+        primaryAction={{
+          label: isDeleting ? "Disconnecting…" : "Disconnect",
+          variant: "destructive",
+          disabled: isDeleting,
+          onClick: confirmDisconnect,
+        }}
+      />
     </div>
   )
 }

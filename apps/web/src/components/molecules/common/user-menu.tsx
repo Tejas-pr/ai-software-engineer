@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom"
-import { ChevronDown, FolderGit2, KeyRound, LogOut } from "lucide-react"
+import { ChevronDown, KeyRound, LayoutDashboard, LogOut } from "lucide-react"
 import type { User } from "@/api/user.api"
 import { paths } from "@/lib/common/paths"
+import { avatarUrl, userInitials } from "@/lib/common/user-display"
 import {
   Avatar,
   AvatarFallback,
@@ -18,12 +19,6 @@ import { cn } from "@workspace/ui/lib/utils"
 
 const ITEM_CLASS =
   "cursor-pointer gap-2.5 rounded-lg px-2.5 py-2 text-[0.8125rem] font-medium"
-
-// Accounts come from GitHub sign-in, so the GitHub avatar is theirs
-const avatarUrl = (user: User) =>
-  `https://github.com/${encodeURIComponent(user.username)}.png?size=80`
-
-const initials = (user: User) => user.username.slice(0, 2).toUpperCase()
 
 export interface UserMenuProps {
   user: User
@@ -46,7 +41,7 @@ export function UserMenu({ user, className }: UserMenuProps) {
         <Avatar size="sm" className="size-7">
           <AvatarImage src={avatarUrl(user)} alt="" />
           <AvatarFallback className="bg-brand-soft text-2xs font-semibold text-foreground">
-            {initials(user)}
+            {userInitials(user)}
           </AvatarFallback>
         </Avatar>
         <span className="hidden max-w-32 truncate text-[0.8125rem] font-medium text-foreground sm:block">
@@ -64,7 +59,7 @@ export function UserMenu({ user, className }: UserMenuProps) {
           <Avatar className="size-9">
             <AvatarImage src={avatarUrl(user)} alt="" />
             <AvatarFallback className="bg-brand-soft text-xs font-semibold text-foreground">
-              {initials(user)}
+              {userInitials(user)}
             </AvatarFallback>
           </Avatar>
           <div className="flex min-w-0 flex-col">
@@ -81,14 +76,14 @@ export function UserMenu({ user, className }: UserMenuProps) {
 
         <DropdownMenuItem
           className={ITEM_CLASS}
-          onClick={() => navigate(paths.projects.root)}
+          onClick={() => navigate(paths.dashboard)}
         >
-          <FolderGit2 className="size-4 text-muted-foreground" />
-          Repositories
+          <LayoutDashboard className="size-4 text-muted-foreground" />
+          Dashboard
         </DropdownMenuItem>
         <DropdownMenuItem
           className={ITEM_CLASS}
-          onClick={() => navigate(paths.settings)}
+          onClick={() => navigate(paths.settings.apiKeys)}
         >
           <KeyRound className="size-4 text-muted-foreground" />
           API keys

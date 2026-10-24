@@ -5,6 +5,7 @@ import { LandingPageSkeleton } from "@/components/molecules/skeletons/landing-sk
 import { PageSkeleton } from "@/components/molecules/skeletons/page-skeleton"
 import { AppLayout } from "@/layouts/app-layout"
 import { AuthLayout } from "@/layouts/auth-layout"
+import { OnboardingLayout } from "@/layouts/onboarding-layout"
 import { PublicLayout } from "@/layouts/public-layout"
 import { RootLayout } from "@/layouts/root-layout"
 import { paths } from "@/lib/common/paths"
@@ -27,6 +28,21 @@ export const router = createBrowserRouter([
             lazy: async () => ({
               Component: (await import("@/pages/common/landing-page"))
                 .LandingPage,
+            }),
+          },
+          {
+            path: paths.agents,
+            ErrorBoundary: RouteErrorBoundary,
+            lazy: async () => ({
+              Component: (await import("@/pages/common/agents-page"))
+                .AgentsPage,
+            }),
+          },
+          {
+            path: paths.setup,
+            ErrorBoundary: RouteErrorBoundary,
+            lazy: async () => ({
+              Component: (await import("@/pages/common/setup-page")).SetupPage,
             }),
           },
           {
@@ -75,11 +91,46 @@ export const router = createBrowserRouter([
         ],
       },
       {
-        Component: AppLayout,
+        Component: OnboardingLayout,
         HydrateFallback: PageSkeleton,
         children: [
           {
+            path: paths.onboarding,
+            ErrorBoundary: RouteErrorBoundary,
+            lazy: async () => ({
+              Component: (await import("@/pages/onboarding/onboarding-page"))
+                .OnboardingPage,
+            }),
+          },
+        ],
+      },
+      {
+        Component: AppLayout,
+        HydrateFallback: PageSkeleton,
+        // `handle.title` names the page in the top bar's breadcrumb
+        children: [
+          {
+            path: paths.dashboard,
+            handle: { title: "Overview" },
+            ErrorBoundary: RouteErrorBoundary,
+            lazy: async () => ({
+              Component: (await import("@/pages/dashboard/dashboard-page"))
+                .DashboardPage,
+            }),
+          },
+          {
+            path: paths.dashboardAgents,
+            handle: { title: "Agents" },
+            ErrorBoundary: RouteErrorBoundary,
+            lazy: async () => ({
+              Component: (
+                await import("@/pages/dashboard/dashboard-agents-page")
+              ).DashboardAgentsPage,
+            }),
+          },
+          {
             path: paths.projects.root,
+            handle: { title: "Repositories" },
             ErrorBoundary: RouteErrorBoundary,
             lazy: async () => ({
               Component: (await import("@/pages/projects/projects-page"))
@@ -88,6 +139,7 @@ export const router = createBrowserRouter([
           },
           {
             path: paths.projects.detail,
+            handle: { title: "Repository" },
             ErrorBoundary: RouteErrorBoundary,
             lazy: async () => ({
               Component: (await import("@/pages/projects/project-detail-page"))
@@ -95,11 +147,48 @@ export const router = createBrowserRouter([
             }),
           },
           {
-            path: paths.settings,
+            path: paths.runs,
+            handle: { title: "Runs" },
             ErrorBoundary: RouteErrorBoundary,
             lazy: async () => ({
-              Component: (await import("@/pages/settings/settings-page"))
-                .SettingsPage,
+              Component: (await import("@/pages/runs/runs-page")).RunsPage,
+            }),
+          },
+          {
+            path: paths.settings.organization,
+            handle: { title: "Organization settings" },
+            ErrorBoundary: RouteErrorBoundary,
+            lazy: async () => ({
+              Component: (
+                await import("@/pages/settings/organization-settings-page")
+              ).OrganizationSettingsPage,
+            }),
+          },
+          {
+            path: paths.settings.members,
+            handle: { title: "Members" },
+            ErrorBoundary: RouteErrorBoundary,
+            lazy: async () => ({
+              Component: (await import("@/pages/settings/members-page"))
+                .MembersPage,
+            }),
+          },
+          {
+            path: paths.settings.apiKeys,
+            handle: { title: "API keys" },
+            ErrorBoundary: RouteErrorBoundary,
+            lazy: async () => ({
+              Component: (await import("@/pages/settings/api-keys-page"))
+                .ApiKeysPage,
+            }),
+          },
+          {
+            path: paths.account,
+            handle: { title: "Profile" },
+            ErrorBoundary: RouteErrorBoundary,
+            lazy: async () => ({
+              Component: (await import("@/pages/account/account-page"))
+                .AccountPage,
             }),
           },
         ],

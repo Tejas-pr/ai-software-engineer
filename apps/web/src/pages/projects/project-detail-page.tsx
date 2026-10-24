@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react"
-import axios from "axios"
-import { Link, useParams } from "react-router-dom"
+import { useEffect, useRef, useState } from "react"
+import { Link, useParams, useSearchParams } from "react-router-dom"
+import { notifyOrgDataChanged } from "@/hooks/organization/use-org-data"
+import { describeError } from "@/lib/common/api-error"
 import { paths } from "@/lib/common/paths"
+import { RUN_STATUS } from "@/lib/common/status"
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
@@ -125,19 +127,14 @@ function statusDot(status: NodeStatus) {
   return <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
 }
 
-function describeError(err: unknown, fallback: string): string {
-  if (axios.isAxiosError(err)) {
-    return (
-      (err.response?.data as { detail?: string } | undefined)?.detail ||
-      fallback
-    )
-  }
-  return fallback
-}
-
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const id = Number(projectId)
+  const [searchParams] = useSearchParams()
+  const requestedRunId = Number(searchParams.get("run")) || null
+  // The run whose live stream this page is attached to, so a second effect
+  // pass (StrictMode, re-render) never opens a duplicate stream
+  const attachedRunId = useRef<number | null>(null)
 
   const [project, setProject] = useState<Project | null>(null)
   const [projectLoading, setProjectLoading] = useState(true)
@@ -211,16 +208,6 @@ export function ProjectDetailPage() {
       .finally(() => setIssuesLoading(false))
   }
 
-  useEffect(() => {
-    getProject(id)
-      .then(setProject)
-      .catch(() => setProject(null))
-      .finally(() => setProjectLoading(false))
-    listRuns()
-      .then((all) => setRunHistory(all.filter((r) => r.project_id === id)))
-      .catch(() => {})
-  }, [id])
-
   // Poll while the background clone is still running.
   useEffect(() => {
     if (project?.status !== "pending") return
@@ -274,7 +261,23 @@ export function ProjectDetailPage() {
     }
   }
 
+  /** Shows a run; a live one is reattached (the API replays its events) */
+  const openRun = async (target: AgentRun) => {
+    if (attachedRunId.current === target.id) return
+    setRun(target)
+    setNodeStates(initialNodeStates())
+    setPendingPlan(
+      target.status === "awaiting_approval" ? target.pending_plan : null
+    )
+    setStreamError(target.error)
+    if (!RUN_STATUS[target.status].live) return
+    attachedRunId.current = target.id
+    const response = await streamRun(target.id)
+    if (response.ok) await consumeStream(response, target.id)
+  }
+
   const consumeStream = async (response: Response, runId: number) => {
+    attachedRunId.current = runId
     setStreamError(null)
     for await (const event of readAgentStream(response)) {
       if (event.mode === "custom") {
@@ -291,13 +294,34 @@ export function ProjectDetailPage() {
         setStreamError(String(event.payload))
       }
     }
+    attachedRunId.current = null
     const updated = await getRun(runId)
     setRun(updated)
     setRunHistory((prev) => [
       updated,
       ...prev.filter((r) => r.id !== updated.id),
     ])
+    notifyOrgDataChanged()
   }
+
+  useEffect(() => {
+    getProject(id)
+      .then(async (loaded) => {
+        setProject(loaded)
+        const history = await listRuns(loaded.organization_id, id)
+        setRunHistory(history)
+        // Open the run the link asked for, else pick up a run that's
+        // still in progress — e.g. after a reload or from another tab
+        const target =
+          history.find((r) => r.id === requestedRunId) ??
+          history.find((r) => RUN_STATUS[r.status].live)
+        if (target) void openRun(target)
+      })
+      .catch(() => setProject(null))
+      .finally(() => setProjectLoading(false))
+    // openRun is stable in behavior; re-run only for another project/run
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, requestedRunId])
 
   const handleStartRun = async () => {
     if (!project || !task.trim()) return
@@ -306,6 +330,7 @@ export function ProjectDetailPage() {
     setStreamError(null)
     const newRun = await createRun(project.id, task, model, skipTests)
     setRun(newRun)
+    notifyOrgDataChanged()
     const response = await streamRun(newRun.id)
     consumeStream(response, newRun.id)
   }
@@ -754,7 +779,7 @@ export function ProjectDetailPage() {
                         href={run.pr_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-block text-sm font-semibold text-primary underline"
+                        className="inline-block text-sm font-semibold text-link underline"
                       >
                         View pull request →
                       </a>
@@ -783,17 +808,19 @@ export function ProjectDetailPage() {
                   </h3>
                   <div className="space-y-2">
                     {runHistory.slice(0, 10).map((r) => (
-                      <div
+                      <button
                         key={r.id}
-                        className="flex items-center justify-between text-xs"
+                        type="button"
+                        onClick={() => void openRun(r)}
+                        className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-start text-xs transition-colors hover:bg-muted ${run?.id === r.id ? "bg-muted" : ""}`}
                       >
                         <span className="truncate pr-4 text-foreground/80">
                           {r.task}
                         </span>
-                        <span className="shrink-0 font-mono text-muted-foreground">
-                          {r.status}
+                        <span className="shrink-0 text-muted-foreground">
+                          {RUN_STATUS[r.status].label}
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </section>

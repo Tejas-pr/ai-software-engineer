@@ -6,7 +6,7 @@ import {
 import { paths } from "@/lib/common/paths"
 
 /** Where a signed-in user goes when nothing asked for somewhere else */
-export const SIGNED_IN_HOME = paths.projects.root
+export const SIGNED_IN_HOME = paths.dashboard
 
 // Only paths inside this app: "/x" yes, "//evil.com" or "https://…" no
 function isSafePath(value: unknown): value is string {

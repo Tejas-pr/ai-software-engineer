@@ -1,4 +1,5 @@
 import * as React from "react"
+import axios from "axios"
 import { AUTH_EXPIRED_EVENT } from "@/api/api"
 import { logout } from "@/api/auth.api"
 import { getUser, type User } from "@/api/user.api"
@@ -7,6 +8,8 @@ import {
   type AuthContextValue,
   type AuthStatus,
 } from "./auth-context"
+
+const ME_RETRIES = 3
 
 // Auth lives in httpOnly cookies, so the client can't read a token: the
 // only way to know "am I signed in" is to ask the server (/me).
@@ -40,22 +43,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return ok
   }, [])
 
-  // Who's here, once per page load
+  // Who's here, once per page load. Only a 401 means "signed out": a rate
+  // limit, a restarting API or a network blip is retried a few times
+  // before giving up, so a hiccup never logs anyone out
   React.useEffect(() => {
     let cancelled = false
-    getUser()
-      .then((me) => {
-        if (cancelled) return
-        setUser(me)
-        setStatus("authenticated")
-      })
-      .catch(() => {
-        if (cancelled) return
-        setUser(null)
-        setStatus("unauthenticated")
-      })
+    let timer: number | undefined
+    const attempt = (n: number) => {
+      getUser()
+        .then((me) => {
+          if (cancelled) return
+          setUser(me)
+          setStatus("authenticated")
+        })
+        .catch((err) => {
+          if (cancelled) return
+          const isSignedOut =
+            axios.isAxiosError(err) && err.response?.status === 401
+          if (!isSignedOut && n < ME_RETRIES) {
+            timer = window.setTimeout(() => attempt(n + 1), 1500 * (n + 1))
+            return
+          }
+          setUser(null)
+          setStatus("unauthenticated")
+        })
+    }
+    attempt(0)
     return () => {
       cancelled = true
+      window.clearTimeout(timer)
     }
   }, [])
 

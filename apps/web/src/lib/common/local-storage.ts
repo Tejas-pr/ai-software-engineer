@@ -10,6 +10,8 @@ export const STORAGE_KEYS = {
   theme: "theme",
   /** Where to land after GitHub sign-in (sessionStorage, one tab) */
   afterSignin: "ase:after_signin",
+  /** The organization picked in the switcher (its id) */
+  organization: "ase:organization",
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
