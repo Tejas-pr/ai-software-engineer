@@ -1,21 +1,30 @@
-# shadcn/ui monorepo template
+# AI Software Engineer
 
-This is a Vite monorepo template with shadcn/ui.
+Point an agent at a GitHub issue. It reads your codebase, proposes a plan
+and waits for your approval — then writes the code, runs your tests, reviews
+its own diff and opens the pull request. Every step streams live to the
+browser.
 
-## Adding components
+- **Frontend:** React 19 + Vite + Tailwind 4 (`apps/web`, `packages/ui`)
+- **API:** FastAPI + SQLModel + LangGraph (`apps/api`)
+- **Data:** Postgres + pgvector, Redis
+- **Models:** Gemini, Claude, GPT (platform or your own key) or local Ollama
 
-To add components to your app, run the following command at the root of your `web` app:
+## Quick start
 
 ```bash
-pnpm dlx shadcn@latest add button -c apps/web
+bun install
+docker compose up -d                       # Postgres :5433, Redis :6379
+cp apps/api/.env.example apps/api/.env     # fill in GitHub OAuth, keys
+(cd apps/api && uv sync)
+bun db:migrate
+bun dev                                    # web :5173, api :8000
 ```
 
-This will place the ui components in the `packages/ui/src/components` directory.
+Full setup, environment variables and commands: [`kb/overview.md`](kb/overview.md).
 
-## Using components
+## Documentation
 
-To use the components in your app, import them from the `ui` package.
-
-```tsx
-import { Button } from "@workspace/ui/components/button";
-```
+Everything about how this works lives in the knowledge base —
+start at [`kb/README.md`](kb/README.md). Coding agents: read
+[`AGENTS.md`](AGENTS.md).

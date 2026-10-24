@@ -35,7 +35,7 @@ TERMINAL_STATUSES = ("completed", "failed", "rejected")
 # How long a run's durable event history survives in Redis after last
 # being written to. Refreshed on every emit, so it only really applies to
 # finished runs nobody has reattached to — keeps Redis from accumulating
-# history forever (see `docs/live-run-plan.md`, item 2).
+# history forever (see `kb/live-run-plan.md`, item 2).
 EVENTS_TTL_SECONDS = 3600
 
 # How often a reattached viewer polls Redis for new events. Deliberately

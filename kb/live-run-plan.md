@@ -124,7 +124,7 @@ Depends on #2 (needs a reattachable stream to be useful from a fresh tab).
    `write_file_tool`'s own return values) and use that for `files_changed`
    instead.
 
-2. **Frontend — accumulate instead of overwrite.** `ProjectDetail.tsx`
+2. **Frontend — accumulate instead of overwrite.** `project-detail-page.tsx`
    currently does `nodeStates[agent] = { status, detail }` — a single
    string per agent, overwritten on every event
    (around `setNodeStates` in the SSE `onmessage`/event handler). Once the
@@ -170,4 +170,4 @@ Depends on #2 (needs a reattachable stream to be useful from a fresh tab).
 - `apps/api/app/services/workspace.py` — clone/reset/delete, `workspace_path`.
 - `apps/api/app/models/project.py` — `workspace_id`.
 - `apps/api/app/redis_client.py`, `app/rate_limiter.py` — existing Redis usage patterns to follow.
-- `apps/web/src/pages/ProjectDetail.tsx` — frontend run view, `nodeStates`, SSE handling.
+- `apps/web/src/pages/projects/project-detail-page.tsx` — frontend run view, `nodeStates`, SSE handling.

@@ -2,26 +2,50 @@
 trigger: always_on
 ---
 
-# Theme and Styling Rules for AI Software Engineer Workspace
+# Theme and styling rules
 
-All new and modified components in the `ai-software-engineer` repository must strictly adhere to the project's custom theme preset (`b1a1OfGoC`).
+Applies to every component in `apps/web` and `packages/ui`. The theme lives
+in `packages/ui/src/styles/globals.css`; full reference in `kb/frontend.md`.
 
-## 1. Typography (JetBrains Mono)
-*   Do NOT hardcode specific font families or use `font-serif` / `font-sans` classes unless you want to intentionally deviate.
-*   The default font family for the entire workspace is configured as `JetBrains Mono` globally. All text, headings, buttons, and input fields should inherit this typography from the document body.
+## 1. Typography
 
-## 2. Colors and Theming (Olive & Yellow)
-*   Always use Tailwind utility classes mapping to design tokens/CSS variables:
-    *   **Page Background**: `bg-background`
-    *   **Text Colors**: `text-foreground`, `text-muted-foreground`
-    *   **Cards / Containers**: `bg-card`, `text-card-foreground`, `border-border`
-    *   **Primary Action Buttons**: `bg-primary`, `text-primary-foreground`
-    *   **Secondary Action Buttons**: `bg-secondary`, `text-secondary-foreground`, `bg-muted`
-*   Do NOT use hardcoded colors such as `bg-black`, `bg-zinc-900`, or arbitrary custom hex values. Let the theme dynamically resolve light and dark modes using the tokens.
+- **JetBrains Mono is the app font** (`--font-sans` and `--font-mono` are
+  both JetBrains Mono). Body, UI, buttons, inputs, labels and code inherit
+  it — don't set a family on them.
+- **Instrument Serif (`font-serif`) is for display headings only**: page
+  titles, section titles, the landing hero, auth titles. Use it with
+  `font-normal` (single weight) and slight negative tracking
+  (`tracking-[-0.01em]`); accents are an italic `<em>` (amber via
+  `text-[color-mix(...)]`/`text-primary` on dark, or `text-muted-foreground`).
+- A small uppercase eyebrow above a serif title stays mono:
+  `text-2xs font-medium tracking-[0.12em] uppercase text-muted-foreground`.
+- Never add another font family.
 
-## 3. Interactive Elements (Pointer Cursor)
-*   Ensure buttons, anchors, and elements with `role="button"` are styled to have a pointer cursor. This is handled globally via the baseline CSS selector, but do not override it.
+## 2. Colors
 
-```
-bunx --bun shadcn@latest init --preset b1a1OfGoC --template vite --monorepo --pointer
-```
+- Semantic tokens only: `bg-background`, `bg-card`, `bg-muted`,
+  `text-foreground`, `text-muted-foreground`, `border-border`,
+  `bg-primary` + `text-primary-foreground` (amber), `bg-highlight` +
+  `text-highlight-foreground` (ink), `bg-brand-soft`, `text-link`.
+- Amber as **text** on light backgrounds is `text-link`, never
+  `text-primary` (too little contrast).
+- Run states: `run-pending`, `run-running`, `run-awaiting`,
+  `run-completed`, `run-failed` (`text-run-failed`, `bg-run-completed/10`, …).
+- No raw hex, `bg-black`, `bg-zinc-*` in components. A new color is a new
+  token in `globals.css` with both light and dark values.
+
+## 3. Components and motion
+
+- Use `components/molecules/application/*` (`ApplicationButton`,
+  `ApplicationBadge`, `ApplicationInput`, …) and `@workspace/ui`
+  primitives before building anything new.
+- Animate with `motion/react`; every animation checks
+  `useReducedMotion()`. Easing `[0.22, 1, 0.36, 1]`.
+- Buttons, links and `role="button"` keep the pointer cursor (set globally).
+
+## 4. Layout
+
+- Works at 390 px wide with no horizontal scroll; grid tracks as
+  `minmax(0, …)` so long content can't widen a column.
+- Tailwind only sees literal class strings — map variants through objects
+  of full class names, never template strings.

@@ -33,7 +33,7 @@ React (Vite/TS) ──HTTP/SSE──> FastAPI ──> LangGraph StateGraph
                                         GitHub PR (M5)
 
 Postgres (+ pgvector)  <──  DocumentChunk embeddings, users, projects, runs
-Redis                  <──  API rate limiting
+Redis                  <──  API rate limiting, live run events, cancel flags
 ```
 
 ## Why FastAPI + LangChain/LangGraph, not a hand-rolled loop
@@ -138,8 +138,10 @@ unrelated one — proof the embeddings capture *meaning*, not keyword overlap.
 - **human_approval** — sits between planner and coder. Calls LangGraph's
   `interrupt({"plan": ..., "task": ...})`, which suspends the graph right
   there; the function doesn't return until a later, separate call resumes
-  it with `Command(resume=...)`. Routes to `coder` if approved, straight to
-  `END` if rejected — a rejected plan never reaches the coder at all.
+  it with `Command(resume=...)`. Three outcomes (`_route_after_approval`):
+  approved → `coder`; rejected *with feedback* → back to `planner`, which
+  revises and asks again; rejected without feedback → `END`. A plan that
+  isn't approved never reaches the coder at all.
 - **reviewer** — summarizes the outcome (files changed, attempts taken,
   pass/fail) into `review_notes`.
 - **github** — the final node. Creates a branch, commits, pushes, opens a
@@ -193,43 +195,50 @@ observed working (`apps/api/tests/test_m3_graph.py`).
 
 ## Frontend
 
-Two pages — no new UI library, reuses the existing card/select styling
-verbatim. This is a redesign from an original single-page version, done
-after actually using it: connecting the same repo twice silently created
-duplicate rows with no way to retry a failed one, and mixing "pick a repo"
-with "run the agent" on one page made a failed connection a dead end.
+React 19 + Vite, React Router data router (`apps/web/src/router.ts`), every
+page lazy-loaded as its own chunk. Full structure, theme and conventions:
+[`frontend.md`](frontend.md). The parts worth knowing here:
 
-- **`RepoList.tsx`** (`/`, the post-login landing page) — every connected
-  repo with its status; `ready` gets an "Open" button straight through to
-  its detail page, `failed` gets a "Retry" button right there (no re-typing
-  anything). A "+ Connect a GitHub repo" section lists repos from
-  `GET /github/repos` that aren't connected yet.
-- **`ProjectDetail.tsx`** (`/projects/{id}`) — everything scoped to one
-  repo: pick an issue (with a manual refresh — no full-page reload needed
-  to see an issue you just pushed) or write a task, pick a model, hit Run.
-  `POST /agent/runs` then immediately opens the SSE stream. One status box
-  per graph node (7, matching the actual graph —
-  researcher/planner/human_approval/coder/tester/reviewer/github), each
-  showing idle/running/done/error driven by the `custom` stream events. An
-  `interrupt` event swaps in the approval panel (the plan, rendered
-  directly from the interrupt payload); Approve/Reject call `/approve`,
-  whose response is consumed by the exact same event-reading loop
-  (`readAgentStream` in `agent.api.ts`, a small async generator that parses
-  `data: {...}\n\n` frames) — one code path handles both the initial run
-  and the resumed one. Run history here is filtered to this project.
+- **Three layouts, one rule each.** `PublicLayout` (landing, 404) shows
+  anyone the way forward; `AuthLayout` (sign in/up, callback, sign out)
+  lets each page decide whether a signed-in user belongs there;
+  `AppLayout` is the guard — no session, no screens, and it remembers
+  where you were headed.
+- **Projects page** (`/projects`) — every connected repo with its status;
+  `ready` opens the detail page, `failed` gets an in-place Retry. A
+  "Connect a GitHub repo" section lists repos from `GET /github/repos` that
+  aren't connected yet.
+- **Project detail** (`/projects/:id`) — pick an issue or write a task, pick
+  a model, Run. `POST /agent/runs`, then the SSE stream. One status box per
+  graph node (researcher/planner/human_approval/coder/tester/reviewer/
+  github), driven by the `custom` stream events. An `interrupt` event swaps
+  in the approval panel; Approve / Request changes / Reject call `/approve`,
+  whose response goes through the exact same reader (`readAgentStream` in
+  `agent.api.ts`, an async generator over `data: {...}\n\n` frames) — one
+  code path for the initial run, the resumed one and a retry.
+- **Settings** (`/settings`) — BYOK provider keys, masked after save.
 
 The duplicate-row problem was fixed at the backend, not papered over in the
-UI: `POST /projects` now looks up an existing `(user, github_url)` row
-first and reuses it. Connecting an already-connected repo just re-clones
-onto the same row — which is also what makes "Retry" possible at all.
+UI: `POST /projects` looks up an existing `(user, github_url)` row first and
+reuses it. Connecting an already-connected repo just re-clones onto the same
+row — which is also what makes "Retry" possible at all.
 
-Verified in a real headless browser (no `chromium-cli` in this
-environment, so a throwaway Playwright driver script instead): the actual
-page against the actual backend, zero console errors. That check caught a
-real bug — the "connect a repo" button was failing silently on an API
-error instead of telling the user anything — fixed on the spot. A second
-pass mocked the SSE stream (no LLM calls needed) to confirm the status
-dots and approval panel render correctly with real event shapes.
+## Bring your own key, retry, cancel
+
+- **BYOK** (`app/api/v1/settings.py`, `UserApiKey`) — users store their own
+  Gemini/Claude/OpenAI keys, Fernet-encrypted, write-only (GET returns a
+  masked `••••••••ab12`). `GET /settings/available-models` splits models by
+  source: the user's keys, the platform's `.env` keys, and Ollama models
+  actually installed right now (queried live).
+- **Retry** (`POST /agent/runs/{id}/retry`) — resumes a `failed` run from
+  its last Postgres checkpoint with `None` as input, so only the node that
+  raised re-runs; everything before it is kept, workspace included.
+- **Cancel** (`POST /agent/runs/{id}/cancel`) — flags the run in Redis; the
+  running thread checks the flag and stops.
+- **Tech-stack grounding** (`app/agents/tech_stack.py`) — the stack is
+  parsed from manifest files by code, not discovered by the LLM, because
+  small local models hallucinate it ("Vue" for a React repo). Researcher and
+  planner get it as given context.
 
 ## Auth & security decisions worth naming explicitly
 
