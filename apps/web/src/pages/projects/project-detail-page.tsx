@@ -281,8 +281,10 @@ export function ProjectDetailPage() {
         const message = describeError(err, "Couldn't load issues")
         setIssuesError(message)
         const isAuthError =
-          (err as { response?: { status?: number } })?.response?.status === 401 ||
-          (err as { response?: { status?: number } })?.response?.status === 400 ||
+          (err as { response?: { status?: number } })?.response?.status ===
+            401 ||
+          (err as { response?: { status?: number } })?.response?.status ===
+            400 ||
           message.toLowerCase().includes("github") ||
           message.toLowerCase().includes("re-authenticate")
         if (isAuthError) {
@@ -326,8 +328,10 @@ export function ProjectDetailPage() {
           const message = describeError(err, "Couldn't load issues")
           setIssuesError(message)
           const isAuthError =
-            (err as { response?: { status?: number } })?.response?.status === 401 ||
-            (err as { response?: { status?: number } })?.response?.status === 400 ||
+            (err as { response?: { status?: number } })?.response?.status ===
+              401 ||
+            (err as { response?: { status?: number } })?.response?.status ===
+              400 ||
             message.toLowerCase().includes("github") ||
             message.toLowerCase().includes("re-authenticate")
           if (isAuthError) {
@@ -824,7 +828,8 @@ export function ProjectDetailPage() {
                     <span>GitHub session expired</span>
                   </div>
                   <p className="text-3xs/relaxed text-muted-foreground">
-                    Your GitHub authorization has expired. Re-authenticate to load open issues and authorize PR creation.
+                    Your GitHub authorization has expired. Re-authenticate to
+                    load open issues and authorize PR creation.
                   </p>
                   <ApplicationButton
                     size="sm"
@@ -864,18 +869,22 @@ export function ProjectDetailPage() {
                 </div>
               )}
 
-              {!isGithubAuthExpired && issues.length === 0 && !issuesLoading && (
-                <div className="flex items-center justify-between text-3xs text-muted-foreground">
-                  <span>{issuesError ? issuesError : "No open issues found."}</span>
-                  <button
-                    type="button"
-                    onClick={refreshIssues}
-                    className="text-link hover:underline"
-                  >
-                    Check again
-                  </button>
-                </div>
-              )}
+              {!isGithubAuthExpired &&
+                issues.length === 0 &&
+                !issuesLoading && (
+                  <div className="flex items-center justify-between text-3xs text-muted-foreground">
+                    <span>
+                      {issuesError ? issuesError : "No open issues found."}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={refreshIssues}
+                      className="text-link hover:underline"
+                    >
+                      Check again
+                    </button>
+                  </div>
+                )}
 
               {/* Task Textarea */}
               <div className="space-y-1">

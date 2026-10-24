@@ -26,8 +26,8 @@ Background, not required reading:
   run streams (done) and the live coder view (not started).
 - [`ollama.md`](ollama.md) — running local models with Ollama.
 
-`implementation/PLAN.md` (repo root) is the working plan — what's built and
-what's next. `BUILDER.md` (repo root) is the original product spec this was built
+`implementation/todo.md` (repo root) is the working plan — remaining tasks
+and what's next. `BUILDER.md` (repo root) is the original product spec this was built
 against; code comments cite it ("BUILDER's ignore list"). Treat it as
 history and intent, not as a description of what exists.
 

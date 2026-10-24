@@ -10,7 +10,8 @@ const rawBaseURL =
 // stay strictly first-party (avoiding Chrome's third-party cookie blocker).
 // In local development (localhost), use rawBaseURL (http://localhost:8000).
 export const baseURL =
-  typeof window !== "undefined" && window.location.hostname.endsWith(".pages.dev")
+  typeof window !== "undefined" &&
+  window.location.hostname.endsWith(".pages.dev")
     ? ""
     : rawBaseURL === "/"
       ? ""

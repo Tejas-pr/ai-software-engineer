@@ -62,10 +62,15 @@ export async function onRequest(
     }
 
     // Rewrite Set-Cookie headers so cookies become first-party on pages.dev
-    const getCookies = (upstreamResponse.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie
-    const setCookies = typeof getCookies === "function"
-      ? getCookies.call(upstreamResponse.headers)
-      : (upstreamResponse.headers.get("Set-Cookie") ? [upstreamResponse.headers.get("Set-Cookie")!] : [])
+    const getCookies = (
+      upstreamResponse.headers as unknown as { getSetCookie?: () => string[] }
+    ).getSetCookie
+    const setCookies =
+      typeof getCookies === "function"
+        ? getCookies.call(upstreamResponse.headers)
+        : upstreamResponse.headers.get("Set-Cookie")
+          ? [upstreamResponse.headers.get("Set-Cookie")!]
+          : []
 
     for (const rawCookie of setCookies) {
       // Strip foreign Domain attribute so cookie binds to pages.dev as host-only first party

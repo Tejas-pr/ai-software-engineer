@@ -46,8 +46,10 @@ export function ConnectRepositoryPopup({
         const msg = describeError(err, "Couldn't load your GitHub repositories")
         setError(msg)
         if (
-          (err as { response?: { status?: number } })?.response?.status === 401 ||
-          (err as { response?: { status?: number } })?.response?.status === 400 ||
+          (err as { response?: { status?: number } })?.response?.status ===
+            401 ||
+          (err as { response?: { status?: number } })?.response?.status ===
+            400 ||
           msg.toLowerCase().includes("github") ||
           msg.toLowerCase().includes("re-authenticate")
         ) {

@@ -1,9 +1,40 @@
-1. [x] need to add test cases.
-2. [x] dockerize the app (up should up all service BE FE DB redis all)
-3. [x] caddy.
-4. Need a chat bot where I can tell things that it can do (if I say 'check my demmy repo and fix the issues from it" it should go and check it and fix)
-5. [x] need refresh and session tokens, since after somedays it is expiring the github issue section not rendering since the token is expired -> added 401 interception and one-click GitHub re-auth prompts across issue picker and repo connectors.
-6. [x] Need proper error handling and message need to show to the user.
-7. [x] delete the project option (available both in projects list and inside project detail header with confirmation dialog).
-8. [x] need to add the rate limiter it is there? (verified: Redis-backed global 300 req/min rate limiter + agent token-bucket limiter), list all the security in the application.
-9. need to add capach using cloudefare.
+# Remaining Tasks (TODO)
+
+Consolidated backlog of remaining tasks. All completed milestones and features have been removed.
+
+---
+
+## 1. Natural Language Chat Bot (Autonomous Repo Assistant)
+- [ ] Conversational interface where the user can issue freeform commands (e.g. *"check my dummy repo and fix the issues from it"*).
+- [ ] Repository inspection and context grounding:
+  - Agent queries connected repositories, active issues, and recent commit history.
+  - Generates recommended plans / actions from the prompt.
+- [ ] Agent run trigger:
+  - Directly kicks off researcher → planner → approval → coder pipeline from the chat session.
+
+## 2. Cloudflare Turnstile CAPTCHA
+- [ ] Add Cloudflare Turnstile widget to sign-in and sign-up pages to protect against bot abuse.
+- [ ] Backend verification endpoint / middleware to validate Turnstile tokens against Cloudflare's `siteverify` API.
+- [ ] Support graceful bypass in local development and testing environments.
+
+## 3. Live Coder View & Per-File Tool Streaming
+- [ ] Stream real-time file edit events, tool executions, and diffs from the coder agent.
+- [ ] Full-page live execution feed at `/projects/:id/runs/:runId/live`.
+
+## 4. Token & Cost Tracking
+- [ ] Record prompt and completion token counts per agent node and run.
+- [ ] Calculate and display estimated cost breakdowns on the 30-day Usage panel in the dashboard.
+
+## 5. Organization Enhancements
+- [ ] **Email Invitations**: Invite organization collaborators via email (currently adds by existing GitHub username).
+- [ ] **Organization URL Slugs**: Route by slug (e.g. `/:org/...`) instead of per-browser client storage.
+- [ ] **Shared Organization API Keys**: Option to configure provider keys at the organization level in addition to per-user keys.
+
+## 6. Execution Sandboxing & Reliability
+- [ ] **Immediate Node Cancellation**: Interrupt long-running tools/processes (e.g. running test suites or shell commands) via SIGINT/SIGTERM rather than only between LangGraph node boundaries.
+- [ ] **Containerized Execution Sandbox**: Isolate workspace code execution inside disposable Docker / microVM containers instead of host process shell execution.
+- [ ] **Revocable Refresh Tokens**: Track and validate refresh tokens against the database `refresh_tokens` table to allow remote logout / revocation.
+- [ ] **Deterministic Approval Test**: Refactor `test_m4_approval` to avoid reliance on small Ollama model tool-calling loops.
+
+## 7. Open Source License & Attribution Safeguards
+- [ ] Add an attribution-preserving open source license (e.g. Apache-2.0 + NOTICE) ensuring the *"Built by Tejas-pr (https://github.com/Tejas-pr)"* credit remains legally protected.

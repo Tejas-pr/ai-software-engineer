@@ -15,7 +15,7 @@ streamed live to the browser. Keep the "Built by" attribution intact.
    code, `kb/known-issues.md` before planning work.
 3. The kb is written to be enough on its own. If you find it wrong or
    missing something you needed, fix it as part of your change.
-4. `implementation/PLAN.md` is the working plan: what's done, what's next.
+4. `implementation/todo.md` is the working plan: remaining tasks.
    Tick items off (and add new ones) as you go.
 
 ## Ground rules

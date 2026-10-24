@@ -65,12 +65,15 @@ export function DemoRestrictionToast() {
     >
       <div className="flex flex-col gap-3.5 text-xs/relaxed text-muted-foreground">
         <p>
-          To prevent resource exhaustion, <strong>repository cloning</strong> and{" "}
-          <strong>live agent executions</strong> are restricted on this public deployment.
+          To prevent resource exhaustion, <strong>repository cloning</strong>{" "}
+          and <strong>live agent executions</strong> are restricted on this
+          public deployment.
         </p>
         <p>
-          You can freely explore the organization settings, agent inspection tools, and full dashboard.
-          To run live agents on your own repositories, please clone the project locally or watch the demo walkthrough video on GitHub.
+          You can freely explore the organization settings, agent inspection
+          tools, and full dashboard. To run live agents on your own
+          repositories, please clone the project locally or watch the demo
+          walkthrough video on GitHub.
         </p>
 
         <div className="flex flex-wrap items-center gap-2 pt-1">

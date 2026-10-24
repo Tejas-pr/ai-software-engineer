@@ -273,7 +273,7 @@ Contributions are welcome! Please follow these standards:
    - Use **JetBrains Mono** for UI/code and **Instrument Serif** exclusively for display titles.
 3. **Knowledge Base Documentation**:
    - Update matching files under `kb/` (`backend.md`, `frontend.md`, `architecture.md`) whenever routes, tables, or behaviors change.
-   - Keep working tasks updated in `implementation/PLAN.md`.
+   - Keep working tasks updated in `implementation/todo.md`.
 
 ---
 
