@@ -40,12 +40,16 @@ class UserPublic(SQLModel):
 def _set_auth_cookies(response: Response, user: User) -> None:
     access_token = create_access_token(data={"sub": user.email})
     refresh_token = create_refresh_token(data={"sub": user.email})
+    is_https = COOKIE_SECURE or settings.GITHUB_REDIRECT_URI.startswith("https://")
+    samesite: Literal["none", "lax"] = "none" if is_https else "lax"
+    secure = is_https
+
     response.set_cookie(
         "access_token",
         access_token,
         httponly=True,
-        secure=COOKIE_SECURE,
-        samesite=COOKIE_SAMESITE,
+        secure=secure,
+        samesite=samesite,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
@@ -54,11 +58,21 @@ def _set_auth_cookies(response: Response, user: User) -> None:
         "refresh_token",
         refresh_token,
         httponly=True,
-        secure=COOKIE_SECURE,
-        samesite=COOKIE_SAMESITE,
+        secure=secure,
+        samesite=samesite,
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         path=AUTH_PATH,
     )
+
+    # When cookies are SameSite=None across different origins (e.g. Cloudflare Pages -> Tunnel),
+    # append Partitioned (CHIPS) so Chrome and Safari allow the cross-site session cookies.
+    if samesite == "none":
+        new_headers = []
+        for name, value in response.raw_headers:
+            if name.lower() == b"set-cookie" and b"Partitioned" not in value:
+                value = value + b"; Partitioned"
+            new_headers.append((name, value))
+        response.raw_headers = new_headers
 
 
 @router.get("/github/login")
@@ -184,17 +198,20 @@ def refresh(
 
 @router.post("/logout/")
 def logout(response: Response):
+    is_https = COOKIE_SECURE or settings.GITHUB_REDIRECT_URI.startswith("https://")
+    samesite: Literal["none", "lax"] = "none" if is_https else "lax"
+    secure = is_https
     response.delete_cookie(
         "access_token",
         path="/",
-        secure=COOKIE_SECURE,
-        samesite=COOKIE_SAMESITE,
+        secure=secure,
+        samesite=samesite,
     )
     response.delete_cookie(
         "refresh_token",
         path=AUTH_PATH,
-        secure=COOKIE_SECURE,
-        samesite=COOKIE_SAMESITE,
+        secure=secure,
+        samesite=samesite,
     )
     return {"status": "ok"}
 
