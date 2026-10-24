@@ -151,7 +151,8 @@ async def github_callback(code: str, session: Session = Depends(get_session)):
     session.refresh(db_user)
 
     # 5. Issue auth cookies and redirect back to the frontend — no token in the URL.
-    redirect = RedirectResponse(f"{settings.FRONTEND_URL}/login/callback")
+    frontend_base = settings.FRONTEND_URL.split(",")[0].strip()
+    redirect = RedirectResponse(f"{frontend_base}/login/callback")
     _set_auth_cookies(redirect, db_user)
     return redirect
 
