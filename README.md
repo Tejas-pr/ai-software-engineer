@@ -28,3 +28,9 @@ Full setup, environment variables and commands: [`kb/overview.md`](kb/overview.m
 Everything about how this works lives in the knowledge base —
 start at [`kb/README.md`](kb/README.md). Coding agents: read
 [`AGENTS.md`](AGENTS.md).
+
+## Author
+
+Built by [Tejas-pr](https://github.com/Tejas-pr) ·
+[source](https://github.com/Tejas-pr/ai-software-engineer).
+© 2026 Tejas-pr. All rights reserved unless a LICENSE file says otherwise.

@@ -2,7 +2,8 @@
 
 ## What the product is
 
-A web app where a user signs in with GitHub, connects one of their
+A web app where a user signs in with GitHub, sets up an organization and a
+model (their own Gemini / Claude / OpenAI key, or local Ollama), connects
 repositories, and hands a task (typed, or picked from the repo's open
 issues) to a team of LLM agents. The agents research the codebase, propose a
 plan, **pause for the user's approval**, then write code, run the project's
@@ -48,6 +49,7 @@ configured), or any local Ollama model (no key).
 │       └── src/             atomic-design folders, layouts, pages, providers
 ├── packages/ui/             shared primitives + theme (globals.css)
 ├── kb/                      this knowledge base
+├── implementation/          the owner's working plan — what's done, what's next
 ├── .agents/                 agent rules and installed skills
 ├── AGENTS.md / CLAUDE.md    entry point for coding agents
 ├── BUILDER.md               original product spec (history/intent)
@@ -58,7 +60,8 @@ configured), or any local Ollama model (no key).
 ## Running it locally
 
 Prerequisites: Bun ≥ 1.3, Node ≥ 20, Python 3.13 + `uv`, Docker, Git.
-Optional: Ollama (local models, see `ollama.md`).
+Optional: Ollama (local models, see `ollama.md`). The same steps, written
+for end users, are the app's public `/setup` page.
 
 ```bash
 bun install                                  # JS deps for every workspace

@@ -204,10 +204,16 @@ page lazy-loaded as its own chunk. Full structure, theme and conventions:
   lets each page decide whether a signed-in user belongs there;
   `AppLayout` is the guard — no session, no screens, and it remembers
   where you were headed.
-- **Projects page** (`/projects`) — every connected repo with its status;
-  `ready` opens the detail page, `failed` gets an in-place Retry. A
-  "Connect a GitHub repo" section lists repos from `GET /github/repos` that
-  aren't connected yet.
+- **Organizations and onboarding.** Projects belong to organizations
+  (personal or team, owner/member roles); a first sign-in goes through
+  onboarding — name the organization, add an API key (checked with the
+  provider) or choose local Ollama models, connect a repo — before the app
+  opens.
+- **Dashboard** (`/dashboard`), a shadcn sidebar-09 shell: an icon rail
+  plus a section panel with the organization switcher; overview with 30-day
+  usage from real runs, alerts (plans awaiting approval, failures) and the
+  repository list; repository management (connect, re-index, retry,
+  disconnect); a runs table; members and settings.
 - **Project detail** (`/projects/:id`) — pick an issue or write a task, pick
   a model, Run. `POST /agent/runs`, then the SSE stream. One status box per
   graph node (researcher/planner/human_approval/coder/tester/reviewer/
@@ -216,7 +222,9 @@ page lazy-loaded as its own chunk. Full structure, theme and conventions:
   whose response goes through the exact same reader (`readAgentStream` in
   `agent.api.ts`, an async generator over `data: {...}\n\n` frames) — one
   code path for the initial run, the resumed one and a retry.
-- **Settings** (`/settings`) — BYOK provider keys, masked after save.
+- **Public pages**: `/agents` (the six agents, read from the API's catalog
+  so it can't drift from the graph) and `/setup` (self-hosting on local
+  models).
 
 The duplicate-row problem was fixed at the backend, not papered over in the
 UI: `POST /projects` looks up an existing `(user, github_url)` row first and

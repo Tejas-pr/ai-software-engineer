@@ -1,9 +1,11 @@
 # Agent guide
 
-You're working on **AI Software Engineer**: a web app where a user connects
-a GitHub repo and a LangGraph team of agents researches, plans (pausing for
-the user's approval), codes, tests and opens a pull request — streamed live
-to the browser.
+You're working on **AI Software Engineer**, built by Tejas-pr
+(https://github.com/Tejas-pr): a web app where a user signs in with
+GitHub, sets up an organization and a model (their own API key or local
+Ollama), connects repos, and a LangGraph team of agents researches, plans
+(pausing for the user's approval), codes, tests and opens a pull request —
+streamed live to the browser. Keep the "Built by" attribution intact.
 
 ## Before you change anything
 
@@ -13,6 +15,8 @@ to the browser.
    code, `kb/known-issues.md` before planning work.
 3. The kb is written to be enough on its own. If you find it wrong or
    missing something you needed, fix it as part of your change.
+4. `implementation/PLAN.md` is the working plan: what's done, what's next.
+   Tick items off (and add new ones) as you go.
 
 ## Ground rules
 
@@ -53,9 +57,11 @@ asked, as the repository owner's configured git identity.
 | You need | Look in |
 |----------|---------|
 | An endpoint | `apps/api/app/api/v1/<area>.py` · `kb/backend.md` |
+| Access rules (orgs, members) | `apps/api/app/services/organizations.py` · `kb/architecture.md` |
 | The agent pipeline | `apps/api/app/agents/graph.py` · `kb/backend.md` → agent graph |
 | Tables | `apps/api/app/models/` · `kb/architecture.md` → data model |
 | A page / route | `apps/web/src/router.ts`, `src/pages/` · `kb/frontend.md` → routes |
+| The dashboard shell | `apps/web/src/layouts/app-layout.tsx`, `components/organisms/common/app-sidebar.tsx` |
 | Design-system components | `apps/web/src/components/molecules/application/` |
 | Theme tokens, fonts | `packages/ui/src/styles/globals.css` |
 | Auth / session | `apps/web/src/providers/auth/`, `apps/api/app/api/v1/auth.py` |

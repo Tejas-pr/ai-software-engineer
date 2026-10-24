@@ -19,8 +19,12 @@ How to change this codebase the way it's already written.
    gets a new router file, included in `app/main.py`'s `api_v1_router`.
 2. Auth: `current_user: Annotated[User, Depends(get_current_user)]`. Need
    GitHub? Add `token: Annotated[str, Depends(get_github_token)]`.
-3. Ownership: fetch through a `_get_owned_<thing>(id, current_user,
-   session)` helper that 404s (not 403s) for someone else's row.
+3. Access: anything organization-owned goes through
+   `app/services/organizations.py` — `require_membership(session, org_id,
+   user, owner=…)` for org routes, `get_accessible_project(session,
+   project_id, user)` for anything under a project. Both 404 (not 403) when
+   the user isn't a member, so other organizations' ids don't leak; 403 is
+   only "member, but not an owner". List endpoints take `organization_id`.
 4. Request bodies are Pydantic `BaseModel`s; errors are `HTTPException`
    with a sentence a user can act on.
 5. Slow work: `BackgroundTasks`, and the task opens its own
@@ -67,10 +71,19 @@ How to change this codebase the way it's already written.
 1. Add the path to `lib/common/paths.ts`.
 2. Create `pages/<area>/<name>-page.tsx` exporting `<Name>Page`.
 3. Register it in `router.ts` under the right layout (`AppLayout` = signed
-   in only, `PublicLayout`, `AuthLayout`) with `lazy` and
-   `ErrorBoundary: RouteErrorBoundary`.
-4. Title it like the others: mono uppercase eyebrow + `font-serif` heading.
-5. Document it in `frontend.md` → Routes.
+   in and onboarded, `OnboardingLayout`, `PublicLayout`, `AuthLayout`) with
+   `lazy`, `ErrorBoundary: RouteErrorBoundary`, and for app pages
+   `handle: { title }` (the top bar's breadcrumb).
+4. App pages: `<div className="mx-auto flex w-full max-w-6xl flex-col gap-8
+   px-4 py-8 sm:px-6">` (or `max-w-3xl` for forms) starting with
+   `<PageHeader eyebrow title description actions />`. A new sidebar
+   section goes in `lib/common/app-nav.ts` (+ a panel in `app-sidebar.tsx`).
+5. Data that belongs to the organization: `useOrganization().current.id`,
+   `useOrgProjects` / `useOrgRuns`; after a mutation call
+   `notifyOrgDataChanged()` so the sidebar and other lists refresh. Show API
+   errors with `describeError(err, fallback)` (`lib/common/api-error.ts`),
+   in the form or as a `toast.add({ …, type: "error" })`.
+6. Document it in `frontend.md` → Routes.
 
 **Components**: place by size — `atoms` (one element), `molecules`
 (a small composed control), `organisms` (a page section), and by feature
@@ -104,7 +117,11 @@ cd apps/api && uv run pytest                  # backend
 
 UI changes: run `bun dev` and look at the page in a real browser, light and
 dark, desktop and phone width. The web app must be served from
-`FRONTEND_URL` (`:5173`) or every API call fails CORS.
+`FRONTEND_URL` (`:5173`) or every API call fails CORS. To screenshot
+signed-in pages without a GitHub round trip, mint a short-lived cookie in
+the API's environment — `create_access_token({"sub": <user email>})` from
+`app/utils/security.py` — and set it as `access_token` on `localhost`
+(cookies aren't port-scoped). Never print or commit such a token.
 
 ## Commits
 

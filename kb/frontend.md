@@ -11,86 +11,140 @@ theme mechanics were ported here and restyled.
 ## Source layout (`apps/web/src`)
 
 ```
-main.tsx                 ThemeProvider → AuthProvider → App (StrictMode)
+main.tsx                 console signature; ThemeProvider → AuthProvider → App
 App.tsx                  <RouterProvider router={router} />
-router.ts                every route; pages are lazy chunks
+router.ts                every route; pages are lazy chunks; handle.title → breadcrumb
 api/                     axios client + one module per backend area
   api.ts                 apiClient (withCredentials), 401 → refresh → AUTH_EXPIRED_EVENT
   endpoints.ts           every backend path, in one object
-  auth.api.ts user.api.ts projects.api.ts agent.api.ts settings.api.ts
+  auth.api.ts user.api.ts account.api.ts organizations.api.ts
+  projects.api.ts agent.api.ts settings.api.ts
 lib/
   common/paths.ts        every app route — link with these, never literals
+  common/attribution.ts  author + repo URLs (the "Built by" stamp)
   common/local-storage.ts  the only place web storage is touched (try/catch)
+  common/api-error.ts    describeError(err, fallback) → the API's detail
+  common/dates.ts        parseApiDate (API sends UTC without a zone), timeAgo
+  common/status.ts       run / project / index status → badge + label
+  common/app-nav.ts      the sidebar rail sections, sectionFor(pathname)
+  common/runs.ts user-display.ts
   auth/auth-redirect.ts  "where to land after sign-in" (state.from / sessionStorage)
 providers/
-  auth/                  AuthContext + AuthProvider (who is signed in)
-  theme/                 ThemeContext + ThemeProvider (light/dark/system, caret switch)
+  auth/                  who is signed in (retries non-401 /me failures)
+  theme/                 light/dark/system, caret switch animation
+  organization/          the user's organizations + the selected one
 hooks/
-  auth/use-auth.ts       useAuth()
-  common/use-theme.ts    useTheme()
-  common/use-debounce.ts used by the application components
-layouts/                 root, public, auth, app (the guard)
+  auth/use-auth.ts  common/use-theme.ts  common/use-debounce.ts
+  organization/use-organization.ts
+  organization/use-org-data.ts   useOrgProjects / useOrgRuns + ORG_DATA_CHANGED_EVENT
+layouts/                 root, public, auth, onboarding, app (sidebar shell)
 components/
-  atoms/                 brand-logo (BrandMark + wordmark), github-icon, text-link
+  atoms/                 brand-logo, built-by, github-icon, org-avatar, text-link
   molecules/
-    application/         the app's design-system components (below)
-    common/              theme-toggle, user-menu, brand-link, github-auth-button,
-                         route-transition, navigation-progress, section-heading
-    auth/                auth-notice
-    skeletons/           page / auth / landing fallbacks
+    application/         the design-system components (below)
+    common/              page-header, view-toggle, code-block, theme-toggle,
+                         user-menu (public header), nav-user (sidebar),
+                         brand-link, github-auth-button, section-heading,
+                         route-transition, navigation-progress
+    organization/        org-switcher, create-organization-popup
+    onboarding/          onboarding-stepper
+    auth/ skeletons/
   organisms/
-    common/              site-header, site-footer, app-header
-    auth/                auth-card, auth-showcase, route-error-boundary
-    landing/             landing-hero, run-preview, how-it-works, landing-features,
-                         landing-models, landing-cta
+    common/              app-sidebar (sidebar-09), app-topbar, site-header, site-footer
+    dashboard/           usage-card, attention-card
+    projects/            project-list (list/grid + actions), connect-repository-popup
+    agents/              agent-catalog (pipeline + agent cards, from /agent/catalog)
+    settings/            api-key-manager (onboarding + settings)
+    onboarding/          organization-step, model-step, repository-step
+    auth/ landing/
 pages/
-  common/                landing-page, not-found-page
+  common/                landing, agents, setup, not-found
   auth/                  signin, signup, auth-callback, signout
-  projects/              projects-page (list/connect), project-detail-page (runs)
-  settings/              settings-page (BYOK keys)
+  onboarding/            onboarding-page
+  dashboard/             dashboard-page, dashboard-agents-page
+  projects/              projects-page (manage), project-detail-page (runs)
+  runs/                  runs-page
+  settings/              organization-settings, members, api-keys
+  account/               account-page (profile)
 ```
 
 Naming: kebab-case files, named exports (`export function X`), one
-component per file, `data-slot="..."` on component roots.
+component per file (no non-component exports from component files — put
+helpers in `lib/`), `data-slot="..."` on component roots.
 
 ## Routes
 
 | Path | Layout | Page | Notes |
 |------|--------|------|-------|
-| `/` | Public | Landing | Header shows Sign in / Get started, or Open app + user menu |
+| `/` | Public | Landing | Hero, how it works, features, models, self-host, CTA |
+| `/agents` | Public | Agents | The six agents + approval step, from `GET /agent/catalog` |
+| `/setup` | Public | Self-host guide | Clone, OAuth app, env, Ollama, run; troubleshooting |
 | `*` | Public | Not found | |
-| `/login` | Auth | Sign in | Redirects away if already signed in (to `state.from` or `/projects`); shows `?error=github` and "continue to …" notices |
+| `/login` | Auth | Sign in | Redirects away if already signed in; `?error=github`, "continue to …" notices |
 | `/signup` | Auth | Sign up | Same GitHub flow; the first sign-in creates the account |
-| `/login/callback` | Auth | Callback | Fixed path — the API redirects here. Waits for `/me`, then `takeRedirect() ?? /projects`, or `/login?error=github` |
-| `/logout` | Auth | Sign out | Calls `signOut()` once on arrival, then shows the result (and an honest notice if the server was unreachable) |
-| `/projects` | App | Projects | Connected repos, connect a new one, retry failed clones |
-| `/projects/:projectId` | App | Project detail | Issue/task, model picker, skip tests, run, live node boxes, approval panel, retry/stop, history |
-| `/settings` | App | Settings | BYOK API keys |
+| `/login/callback` | Auth | Callback | Fixed path — the API redirects here. Waits for `/me`, then `takeRedirect() ?? /dashboard` |
+| `/logout` | Auth | Sign out | Calls `signOut()` once on arrival, then shows the result |
+| `/onboarding` | Onboarding | Onboarding | Organization → model access (key or local Ollama) → first repo |
+| `/dashboard` | App | Overview | Usage (30 days), alerts, repositories (list/grid), Add new |
+| `/dashboard/agents` | App | Agents | The catalog inside the shell |
+| `/projects` | App | Repositories | Search, list/grid, connect (`?connect=1` opens the dialog), re-index, retry, disconnect |
+| `/projects/:projectId` | App | Repository | Task, model picker, run, live node boxes, approval, retry/stop, history; `?run=<id>` opens a run, a live run is reattached |
+| `/runs` | App | Runs | Every run in the organization (table, search, status filter) |
+| `/settings` | App | Organization | Rename, details, delete / leave |
+| `/settings/members` | App | Members | Add by GitHub username, roles, remove |
+| `/settings/api-keys` | App | API keys | The user's own keys + local model status |
+| `/account` | App | Profile | Display name, GitHub, log out |
 
 `RootLayout` wraps everything in the toast provider, the top navigation
-progress bar (shows while a lazy page loads) and `ScrollRestoration`. Every
-route has `ErrorBoundary: RouteErrorBoundary` and the layouts have
-`HydrateFallback` skeletons.
+progress bar and `ScrollRestoration`. Every route has `ErrorBoundary:
+RouteErrorBoundary`; layouts have `HydrateFallback` skeletons.
 
-## Auth and session
+## Auth, onboarding and session
 
 - The session is httpOnly cookies — JS can't read a token. `AuthProvider`
-  asks `GET /me` once on load: `status` is `pending` →
-  `authenticated` | `unauthenticated`.
-- `apiClient`'s response interceptor: on a 401 it calls `/refresh/` once and
-  retries; if that fails it dispatches `AUTH_EXPIRED_EVENT` on `window`.
-  AuthProvider listens and drops the user. It **does not** hard-redirect —
-  that would bounce anonymous visitors off public pages.
-- `AppLayout` is the only guard: pending → `PageSkeleton`; no user →
-  `<Navigate to="/login" state={{from}} replace />`.
-- Sign-in is a full-page redirect (`GithubAuthButton` →
-  `githubLoginUrl()`), so the destination is kept in sessionStorage
-  (`rememberRedirect`) and read once on the callback (`takeRedirect`). Only
-  same-app paths are accepted (no `//host`, no `/login*`, `/logout*`).
-- Signing out = navigating to `/logout` (the user menu does this).
-  `signOut()` POSTs `/logout/` and clears the user even if that call fails.
-  Back from there lands on `/login` via the guard, never on stale data.
-- `refresh()` re-reads `/me` on demand.
+  asks `GET /me` once on load: `pending` → `authenticated` |
+  `unauthenticated`. Only a **401** means signed out; other failures (429,
+  5xx, network) are retried three times with backoff first.
+- `apiClient`'s interceptor: on a 401 it calls `/refresh/` once and retries;
+  if that fails it dispatches `AUTH_EXPIRED_EVENT` and AuthProvider drops
+  the user. It never hard-redirects (public pages work signed out).
+- `AppLayout` is the guard: pending → skeleton; no user → `/login` with
+  `state.from`; `onboarded_at` null → `/onboarding`. `OnboardingLayout`
+  does the reverse (onboarded → `/dashboard`).
+- Onboarding (`pages/onboarding/onboarding-page.tsx`) resumes where the
+  user left off (organization exists → step 2; a key saved → step 3) and
+  finishes with `completeOnboarding(useLocalModels)` then `refresh()`.
+- Sign-in is a full-page redirect (`GithubAuthButton`), so the destination
+  is kept in sessionStorage (`rememberRedirect` / `takeRedirect`; only
+  same-app paths).
+- Signing out = navigating to `/logout` (both user menus do this).
+
+## The app shell (sidebar-09)
+
+`AppLayout` = `OrganizationProvider` → `TooltipProvider` →
+`SidebarProvider` (`--sidebar-width: 21rem`) → `AppSidebar` +
+`SidebarInset` (`AppTopbar` + the routed page).
+
+`AppSidebar` follows shadcn's **sidebar-09** block (installed with `npx
+shadcn add sidebar-09`): an **icon rail** (brand mark, the `APP_NAV`
+sections with a sliding active marker, `NavUser` at the foot) and a
+**section panel** (the org switcher on top; then a searchable repository
+list, recent runs, the pipeline, or settings links depending on the
+section; "Built by" at the foot). Cmd/Ctrl+B or the top-bar trigger
+collapses it to the rail; on phones it's a sheet. `AppTopbar` shows the
+organization and the route's `handle.title` as a breadcrumb.
+
+## Organizations in the UI
+
+- `useOrganization()` → `{organizations, current, switchTo, refresh}`.
+  `current` is always set inside the app shell. Switching writes
+  localStorage `ase:organization`.
+- Lists are fetched per organization with `useOrgProjects(orgId)` /
+  `useOrgRuns(orgId)`. After any change to projects or runs, call
+  `notifyOrgDataChanged()` — every mounted list (the sidebar included)
+  reloads; there is no global store.
+- Owner-only controls are hidden for members (`current.role`), and the API
+  enforces the same rules.
 
 ## Theme and typography
 
@@ -152,18 +206,21 @@ Use these before reaching for raw primitives:
 | `ApplicationInput` | Labelled input with icons, error shake, animated messages, unit dropdown addon. |
 | `ApplicationSelection` / `ApplicationCombobox` | Select / searchable select with label, error, description. |
 | `ApplicationCard` (+ `.Header`, `.Title`, …, `.Entity`) | Cards; `interactive` variant is keyboard-accessible. |
-| `ApplicationPopup` | Modal with spring + blur in/out (`application-popup-motion.ts`). |
+| `ApplicationPopup` | Modal with spring + blur in/out (`application-popup-motion.ts`); `primaryAction`/`secondaryAction` for confirm dialogs. |
 | `ApplicationTabs` | Underline tabs with a sliding indicator. |
-| `ApplicationTable` / `ApplicationPagination` | Data table with search, sort, selection, expandable rows. |
+| `ApplicationTable` / `ApplicationPagination` | Data table with search, sort, selection, expandable rows (rows must be plain object types — use a mapped type like `Pick<T, keyof T>` for interfaces; see `runs-page.tsx`). |
 | `ApplicationDatePicker` (+ single / range) | Dates and schedules (react-day-picker, date-fns). |
 
-Table, date picker, tabs, card and popup are ported but not used by any
-page yet — they're there for the dashboard work.
+Not used by any page yet: card, tabs, pagination, date pickers.
 
-Primitives in `packages/ui/src/components`: avatar, badge, button,
-calendar, card, checkbox, command, dialog, dropdown-menu, empty, field,
-input, input-group, label, popover, progress, select, separator, skeleton,
-spinner, table, textarea, toast, tooltip (shadcn on Base UI). Toasts:
+Primitives in `packages/ui/src/components`: avatar, badge, breadcrumb,
+button, calendar, card, checkbox, collapsible, command, dialog,
+dropdown-menu, empty, field, input, input-group, label, popover, progress,
+select, separator, sheet, sidebar, skeleton, spinner, switch, table,
+textarea, toast, tooltip (shadcn on Base UI). Adding one with the shadcn
+CLI: answer **no** to overwriting existing files, then replace its
+`import { cn } from "cn"` with `@workspace/ui/lib/utils` and drop the `cn`
+package it adds. Toasts:
 `import { toast } from "@workspace/ui/components/toast"` →
 `toast.add({ title, description, type })` (the Toaster is in RootLayout).
 

@@ -4,37 +4,31 @@ Verified against the code. Remove an entry in the same change that fixes it.
 
 ## Functional gaps
 
-- **Repos are never indexed.** `POST /projects/{id}/index` exists and
-  works, but nothing calls it — not the clone task, not the web app. So
-  `document_chunks` stays empty and the researcher's `search_codebase`
-  always answers "No relevant code found." Fix: index at the end of
-  `_clone_and_update_status` (or call the endpoint when a project turns
-  `ready`), and re-index after merged changes.
-- **The web app doesn't reattach to an in-flight run.** The API supports it
-  (`GET /stream` on a `running` / `awaiting_approval` run replays and
-  polls Redis), but the project page only streams runs it starts itself.
-  After a reload the run shows in history but the live boxes don't resume.
 - **Cancel is not immediate.** The worker checks `run:{id}:cancelled`
   between stream events, so the current node (an LLM tool loop can take
   minutes) finishes first. The row is marked `failed` right away, though.
-- **`files_changed` comes from the plan**, not from writes that actually
-  happened (`coder_node`). The UI and PR body can name files that weren't
-  touched.
-- **Changing a BYOK key needs an API restart.** `get_chat_model` is
-  `lru_cache`d per `(model, temperature, user_id)` and resolves the key
-  inside, so the old key stays in the cached client.
 - **Shell escapes the sandbox.** File tools refuse paths outside the
   workspace, but `run_command` is `shell=True` with only a tiny blocklist;
   the coder can `cd ..` or run anything the API user can. Fine for local
   single-user use, not for multi-tenant hosting (needs a container per run).
-- **Planner can pick a non-terminating `test_command`** (e.g. `npm run
-  dev`) for repos without tests → guaranteed timeout. The prompt should
-  steer to `build`/`lint` when there's no test script.
 - **Local models are unreliable at tool calling** (e.g. `qwen2.5-coder:7b`
-  narrating a write instead of calling the tool). Mitigated by
+  narrating a write instead of calling the tool, or looping on tool calls
+  until LangGraph's 25-step recursion limit). Mitigated by
   `RobustChatOllama` and the coder's "must have a real diff" check; cloud
-  models are far more reliable.
-- **Embeddings use the platform Gemini key only**, never a user's BYOK key.
+  models are far more reliable. `tests/test_m4_approval.py` runs the
+  researcher on whatever model is configured and fails on such a loop.
+- **The planner can still pick a non-terminating `test_command`** despite
+  being told not to (no dev servers, watchers) — it's a prompt, not a check.
+- **Embeddings use the platform Gemini key only**, never a user's BYOK key;
+  without one they need Ollama's `nomic-embed-text`. A failed index is
+  recorded on the project (`index_status = failed`, `index_error`) and
+  shown in the UI; runs still work, search just finds nothing.
+- **Members are added by GitHub username, not invited by email.** The
+  person must have signed in once (that creates their account).
+- **The usage panel counts runs, not tokens or cost** — token usage isn't
+  recorded anywhere yet.
+- **Org selection is per browser** (localStorage), not in the URL, so a
+  shared link opens in whichever organization the viewer last picked.
 - **No live coder view yet** — see `live-run-plan.md` item 4.
 
 ## Code-level gotchas
@@ -42,6 +36,10 @@ Verified against the code. Remove an entry in the same change that fixes it.
 - **CORS has exactly one origin** (`FRONTEND_URL`, default
   `http://localhost:5173`). A dev server on another port gets CORS errors on
   every call — the app then behaves as signed out.
+- **Rate limit: 300 requests / 60 s per client IP**, on every route. A
+  dashboard page loads several lists at once; tests that hammer the API
+  share the IP. The web app treats a failing `/me` as "signed out" only on
+  a 401 — anything else (429, 5xx, network) is retried three times first.
 - **Alembic autogenerate drops LangGraph's checkpoint tables.** Strip those
   operations from every generated migration.
 - **No FK cascades.** Delete dependents in code before parents.
@@ -65,18 +63,9 @@ Verified against the code. Remove an entry in the same change that fixes it.
 
 ## Backlog
 
-Requested by the owner, not started:
-
-- **Organizations and a Vercel-style dashboard.** Onboarding flow;
-  multiple organizations per user and an org switcher; a sidebar dashboard
-  (projects overview, activity, usage); profile page; settings — all
-  backed by real tables and endpoints. Open questions to settle first:
-  real teams with invites and roles, or just grouping; migrate existing
-  projects/keys into an auto-created personal org vs. mandatory onboarding;
-  which usage numbers to show (runs per day, success rate, tokens if
-  recorded). Moves `projects`, `agent_runs` and `user_api_keys` from
-  user-owned to org-owned. The ported `ApplicationTable`, `ApplicationTabs`,
-  `ApplicationCard`, `ApplicationPopup` and date pickers are meant for this.
 - Live coder view (`live-run-plan.md` item 4).
+- Email invitations to organizations; per-organization (shared) API keys.
+- Record token usage per run, so the dashboard can show cost.
+- Organization slug in URLs (`/:org/...`) instead of per-browser selection.
 - From `BUILDER.md`'s later phases: evaluation harness, observability,
   production deployment, sandboxed (containerized) execution.

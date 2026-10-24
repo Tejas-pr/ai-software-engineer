@@ -7,11 +7,14 @@ Browser (React, :5173)
    │  cookies: access_token (path /), refresh_token (path /api/v1/accounts/auth)
    │  JSON over axios  ·  SSE via fetch() streaming
    ▼
-FastAPI (:8000)  ── global Redis rate limit: 60 req / 60 s per client IP
+FastAPI (:8000)  ── global Redis rate limit: 300 req / 60 s per client IP
+   │               ── every response carries X-Built-By: Tejas-pr (…)
    ├── auth        GitHub OAuth, JWT cookies
-   ├── projects    clone repos (background task), issues, index, delete
-   ├── agent       runs: create, stream (SSE), approve, retry, cancel
-   ├── settings    BYOK keys, available models
+   ├── account     profile, onboarding (organization → model → done)
+   ├── orgs        organizations, members, dashboard overview
+   ├── projects    clone + index repos (background task), issues, delete
+   ├── agent       runs: create, stream (SSE), approve, retry, cancel; public catalog
+   ├── settings    BYOK keys (verified with the provider), available models
    ├── github      list the user's repos
    └── chat/system dev-only console + health probes
         │
@@ -24,11 +27,54 @@ LangGraph StateGraph ── PostgresSaver checkpoints (thread_id = run id)
         ▼ workspace dir                       ▼
 apps/api/workspaces/<workspace_id>/      github.com (branch, push, PR)
 
-Postgres + pgvector: users, projects, agent_runs, document_chunks,
-                     user_api_keys, refresh_tokens, LangGraph checkpoint tables
+Postgres + pgvector: users, organizations, organization_members, projects,
+                     agent_runs, document_chunks, user_api_keys,
+                     refresh_tokens, LangGraph checkpoint tables
 Redis: rate limit counters, run event history, cancel flags
 LLM providers: Gemini / Anthropic / OpenAI (cloud) · Ollama (local)
 ```
+
+## Organizations and access
+
+Everything a user works on belongs to an **organization**: projects (and
+through them runs, chunks and workspaces). Access is by membership
+(`organization_members`, role `owner` or `member`), checked on every
+request by `app/services/organizations.py`:
+
+- `require_membership(session, org_id, user, owner=False)` — 404 if the
+  user isn't a member (the org "doesn't exist" for them), 403 if `owner=True`
+  and they're only a member.
+- `get_accessible_project(session, project_id, user)` — the project, if the
+  user is a member of its organization; else 404. Runs are reached through
+  their project the same way.
+
+Members connect repos and run agents; owners also rename, add/remove
+members, change roles and delete. Every user has one **personal**
+organization (`is_personal`): it can't be deleted, left, or given members.
+An organization always keeps at least one owner. **API keys belong to the
+user**, not the organization — a run uses the key of whoever started it.
+
+The web app keeps the selected organization in localStorage
+(`ase:organization`) and scopes every list to it.
+
+## Onboarding
+
+New users can't reach the app until it's usable for them. `onboarded_at`
+on `users` is null until then; `AppLayout` sends them to `/onboarding`:
+
+1. **Organization** — `POST /account/onboarding/organization` creates their
+   personal organization (renames it if they come back).
+2. **Model access** — `PUT /settings/api-keys/{provider}` (the API checks
+   the key with the provider before storing it), or choose local Ollama
+   models, offered only when the API can reach Ollama and it has
+   tool-capable models installed.
+3. **First repository** — optional `POST /projects/`.
+
+Then `POST /account/onboarding/complete` checks there's an organization and
+a key (or `use_local_models` with Ollama really available), sets
+`onboarded_at`, and the app opens on `/dashboard`. Users who existed before
+organizations were added were backfilled as onboarded, each with a personal
+organization holding their projects (migration `9a7c2e41d5b3`).
 
 ## The life of a run
 
@@ -40,18 +86,22 @@ LLM providers: Gemini / Anthropic / OpenAI (cloud) · Ollama (local)
    (refreshed on every login), sets the two JWT cookies and redirects to
    `FRONTEND_URL/login/callback`. The web app's callback page waits for
    `GET /me`, then navigates to the page the user originally wanted
-   (sessionStorage) or `/projects`.
-2. **Connect a repo.** The projects page lists `GET /github/repos` minus
-   already-connected ones. `POST /projects` upserts a `Project` row keyed by
-   `(user_id, github_url)`, status `pending`, and clones in a FastAPI
-   `BackgroundTask`: `git clone --depth 1 --branch <branch>` with the token
-   in the URL, into `workspaces/<workspace_id>/`. Status becomes `ready` or
-   `failed` (error text goes in `description`). The detail page polls every
-   2 s while `pending`. Reconnecting the same URL reuses the row — that is
-   the Retry path.
-3. **(Optional) index.** `POST /projects/{id}/index` chunks and embeds the
-   workspace into `document_chunks`. **The web app never calls this today**
-   — see `known-issues.md`.
+   (sessionStorage) or `/dashboard` — which redirects to `/onboarding` if
+   onboarding isn't finished. GitHub sign-in also stores the avatar and
+   seeds the display name.
+2. **Connect a repo.** The connect dialog lists `GET /github/repos` minus
+   already-connected ones. `POST /projects {organization_id, …}` upserts a
+   `Project` row keyed by `(organization_id, github_url)`, status `pending`,
+   and in a FastAPI `BackgroundTask` clones it (`git clone --depth 1
+   --branch <branch>` with the token in the URL, into
+   `workspaces/<workspace_id>/`). Status becomes `ready` or `failed` (error
+   text goes in `description`). Reconnecting the same URL reuses the row —
+   that is the Retry path. The pages poll while a clone or index is running.
+3. **Index.** Right after a successful clone the same task chunks and
+   embeds the workspace into `document_chunks` (`index_status`: `indexing` →
+   `ready` | `failed`, with `indexed_at` / `index_error`). A failed index
+   doesn't fail the project. `POST /projects/{id}/index` rebuilds it
+   (Re-index in the repository menu).
 4. **Create the run.** `POST /agent/runs {project_id, task, model,
    skip_tests}` inserts an `AgentRun` with status `pending`. Nothing executes
    yet. The project must be `ready` (else 409).
@@ -100,7 +150,9 @@ raised runs again; the workspace is not reset. **Cancel** (`POST
 .../cancel`) sets `run:{id}:cancelled` in Redis and marks the row `failed`
 ("Run was stopped by user."); the worker checks the flag between stream
 events. **Reattach**: opening `/stream` on a `running` or
-`awaiting_approval` run replays the Redis list and polls it every 1 s.
+`awaiting_approval` run replays the Redis list and polls it every 1 s. The
+project page uses this to pick up a live run after a reload (or open the
+one in `?run=<id>`).
 
 ## SSE event shapes
 
@@ -119,6 +171,10 @@ The client parses frames with `readAgentStream` (`apps/web/src/api/agent.api.ts`
 Project:  pending ──clone ok──▶ ready
              └────clone err──▶ failed  (reconnect → pending again)
 
+Index:    none ─clone ok─▶ indexing ──▶ ready | failed   (re-index → indexing)
+
+User:     onboarded_at null ──onboarding complete──▶ set
+
 AgentRun: pending ─stream─▶ running ─interrupt─▶ awaiting_approval ─approve─▶ running
                                │                        │
                                ├──▶ completed           └─reject─▶ rejected
@@ -136,8 +192,10 @@ update).
 
 | Table | Columns that matter |
 |-------|---------------------|
-| `users` | `id`, `username` (unique, GitHub login), `email` (unique — the JWT `sub`), `github_id` (unique), `github_access_token` (Fernet ciphertext), `hashed_password` (unused, OAuth only), `is_active` |
-| `projects` | `id`, `user_id` → users, `name` (default `owner/repo`), `github_url`, `branch` (default `main`), `description` (also holds clone errors), `status`, `workspace_id` (UUID, unique — the workspace directory name) |
+| `users` | `id`, `username` (unique, GitHub login), `email` (unique — the JWT `sub`), `github_id` (unique), `github_access_token` (Fernet ciphertext), `display_name`, `avatar_url`, `onboarded_at`, `hashed_password` (unused, OAuth only), `is_active` |
+| `organizations` | `id`, `name`, `slug` (unique), `is_personal`, `created_by` → users |
+| `organization_members` | `organization_id`, `user_id`, `role` (`owner` / `member`); unique `(organization_id, user_id)` |
+| `projects` | `id`, `organization_id` → organizations, `user_id` (who connected it), `name` (default `owner/repo`), `github_url`, `branch` (default `main`), `description` (also holds clone errors), `status`, `index_status`, `indexed_at`, `index_error`, `workspace_id` (UUID, unique — the workspace directory name) |
 | `agent_runs` | `id` (= LangGraph `thread_id`), `project_id`, `user_id`, `task`, `model`, `skip_tests`, `status`, `pending_plan` (JSON), `review_notes`, `pr_url`, `error` |
 | `document_chunks` | `project_id`, `file_path`, `language`, `chunk_index`, `start_line`, `end_line`, `content`, `embedding vector(768)` |
 | `user_api_keys` | `user_id`, `provider` (`gemini` / `claude` / `gpt`), `encrypted_key`; unique `(user_id, provider)` |
@@ -145,13 +203,14 @@ update).
 | `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, `checkpoint_migrations` | Owned by LangGraph's `PostgresSaver.setup()`; outside Alembic |
 
 No foreign key cascades: deleting a project deletes its runs and chunks in
-code first (`DELETE /projects/{id}`).
+code first (`app/services/projects.py`'s `delete_project`, also used when
+an organization is deleted).
 
 ## Redis keys
 
 | Key | Type | Written by | TTL |
 |-----|------|-----------|-----|
-| `rate_limit:<client ip>` | counter | `RateLimiter` dependency on every request | 60 s window |
+| `rate_limit:<client ip>` | counter (limit 300) | `RateLimiter` dependency on every request | 60 s window |
 | `run:<id>:events` | list of JSON events, `null` = run finished | graph worker thread, cancel | 3600 s, refreshed per push |
 | `run:<id>:cancelled` | `"1"` | `POST /agent/runs/{id}/cancel` | 3600 s |
 
