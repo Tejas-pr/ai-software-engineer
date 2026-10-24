@@ -1,0 +1,25 @@
+{
+    # Enable internal certificate authority for automatic local HTTPS
+    local_certs
+}
+
+# Serve both HTTPS and HTTP on localhost
+localhost, :80, :443 {
+    # Backend API endpoints (flush_interval -1 is essential for unbuffered SSE streaming)
+    handle /api/* {
+        reverse_proxy api:8000 {
+            flush_interval -1
+        }
+    }
+
+    # API health check endpoint
+    handle /health {
+        reverse_proxy api:8000
+    }
+
+    # All frontend routes handled by the web container
+    handle {
+        reverse_proxy web:80
+    }
+}
+

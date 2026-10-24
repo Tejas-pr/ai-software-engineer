@@ -29,7 +29,7 @@ To add a new table to the database, follow these steps:
        )
    ```
 
-2. **Register the Model**: Import and register your model class in [`app/models/__init__.py`](file:///c:/Users/tejas/Documents/ai-software-engineer/apps/api/app/models/__init__.py) so that it is included in SQLModel's metadata when Alembic runs:
+2. **Register the Model**: Import and register your model class in [`app/models/__init__.py`](app/models/__init__.py) so that it is included in SQLModel's metadata when Alembic runs:
    ```python
    # app/models/__init__.py
    from app.models.project import Project

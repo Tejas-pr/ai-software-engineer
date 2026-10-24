@@ -11,6 +11,8 @@ export type RunStatus =
 
 export interface AgentRun {
   id: number
+  created_at: string
+  updated_at: string
   project_id: number
   user_id: number
   task: string
@@ -58,8 +60,42 @@ export async function createRun(
   return res.data
 }
 
-export async function listRuns(): Promise<AgentRun[]> {
-  const res = await apiClient.get<AgentRun[]>(API_ENDPOINTS.AGENT_RUNS)
+export interface RunListItem extends AgentRun {
+  project_name: string
+}
+
+/** The organization's runs (optionally one project's), newest first */
+export async function listRuns(
+  organizationId: number,
+  projectId?: number
+): Promise<RunListItem[]> {
+  const res = await apiClient.get<RunListItem[]>(API_ENDPOINTS.AGENT_RUNS, {
+    params: { organization_id: organizationId, project_id: projectId },
+  })
+  return res.data
+}
+
+export interface AgentInfo {
+  id: string
+  name: string
+  role: string
+  description: string
+  kind: string
+  tools: string[]
+  limits: string[]
+  outputs: string
+}
+
+export interface AgentCatalog {
+  agents: AgentInfo[]
+  approval_step: { id: string; name: string; role: string }
+  /** Node ids in pipeline order, including the human approval step */
+  order: string[]
+}
+
+/** Public: the pipeline's agents as configured on this server */
+export async function getAgentCatalog(): Promise<AgentCatalog> {
+  const res = await apiClient.get<AgentCatalog>(API_ENDPOINTS.AGENT_CATALOG)
   return res.data
 }
 

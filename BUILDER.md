@@ -267,7 +267,7 @@ ai-software-engineer/
 ├── packages/
 │   └── ui/
 │
-├── docs/
+├── kb/
 │
 ├── turbo.json
 ├── package.json

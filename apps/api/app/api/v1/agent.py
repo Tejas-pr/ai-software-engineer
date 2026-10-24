@@ -14,6 +14,7 @@ from langgraph.types import Command
 from pydantic import BaseModel
 from sqlmodel import Session, col, select
 
+from app.agents.catalog import APPROVAL_STEP, agent_catalog
 from app.agents.graph import compile_graph
 from app.api.deps import get_current_user
 from app.config import settings
@@ -21,6 +22,7 @@ from app.db import engine, get_session
 from app.models.agent_run import AgentRun
 from app.models.project import Project
 from app.models.user import User
+from app.services.organizations import get_accessible_project, require_membership
 from app.services.workspace import clone_repository, reset_workspace, workspace_path
 from app.utils.crypto import decrypt_token
 
@@ -35,7 +37,7 @@ TERMINAL_STATUSES = ("completed", "failed", "rejected")
 # How long a run's durable event history survives in Redis after last
 # being written to. Refreshed on every emit, so it only really applies to
 # finished runs nobody has reattached to — keeps Redis from accumulating
-# history forever (see `docs/live-run-plan.md`, item 2).
+# history forever (see `kb/live-run-plan.md`, item 2).
 EVENTS_TTL_SECONDS = 3600
 
 # How often a reattached viewer polls Redis for new events. Deliberately
@@ -77,10 +79,35 @@ class ApproveRequest(BaseModel):
 
 
 def _get_owned_run(run_id: int, current_user: User, session: Session) -> AgentRun:
+    """A run the user can see and act on: any member of its project's
+    organization."""
     run = session.get(AgentRun, run_id)
-    if run is None or run.user_id != current_user.id:
+    if run is None:
         raise HTTPException(status_code=404, detail="Run not found")
+    try:
+        get_accessible_project(session, run.project_id, current_user)
+    except HTTPException:
+        raise HTTPException(status_code=404, detail="Run not found") from None
     return run
+
+
+@router.get("/catalog")
+def get_agent_catalog():
+    """Public: the agents in the pipeline, in order, with their tools and
+    limits as configured in this deployment (the /agents page)."""
+    return {
+        "agents": agent_catalog(),
+        "approval_step": APPROVAL_STEP,
+        "order": [
+            "researcher",
+            "planner",
+            "human_approval",
+            "coder",
+            "tester",
+            "reviewer",
+            "github",
+        ],
+    }
 
 
 @router.post("/runs")
@@ -89,9 +116,7 @@ def create_run(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Session = Depends(get_session),
 ):
-    project = session.get(Project, body.project_id)
-    if project is None or project.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = get_accessible_project(session, body.project_id, current_user)
     if project.status != "ready":
         raise HTTPException(
             status_code=409, detail=f"Project is '{project.status}', not ready to run"
@@ -115,15 +140,28 @@ def create_run(
 
 @router.get("/runs")
 def list_runs(
+    organization_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     session: Session = Depends(get_session),
+    project_id: int | None = None,
+    limit: int = 200,
 ):
+    """The organization's runs (optionally one project's), newest first,
+    each with its `project_name`."""
+    require_membership(session, organization_id, current_user)
     statement = (
-        select(AgentRun)
-        .where(AgentRun.user_id == current_user.id)
+        select(AgentRun, Project.name)
+        .join(Project, col(Project.id) == AgentRun.project_id)
+        .where(Project.organization_id == organization_id)
         .order_by(col(AgentRun.created_at).desc())
+        .limit(min(limit, 500))
     )
-    return session.exec(statement).all()
+    if project_id is not None:
+        statement = statement.where(AgentRun.project_id == project_id)
+    return [
+        {**run.model_dump(), "project_name": project_name}
+        for run, project_name in session.exec(statement).all()
+    ]
 
 
 @router.get("/runs/{run_id}")

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlmodel import Field
 
 from app.models.base import TimestampModel
@@ -20,6 +22,14 @@ class User(TimestampModel, table=True):
     # to call the GitHub API on the user's behalf later (list repos, clone
     # private repos, open PRs) — never store it in plaintext.
     github_access_token: str | None = Field(default=None)
+
+    # Profile: filled from GitHub on sign-in, display_name editable
+    display_name: str | None = Field(default=None)
+    avatar_url: str | None = Field(default=None)
+
+    # Set once the user has created their first organization (onboarding);
+    # null sends them to /onboarding instead of the dashboard.
+    onboarded_at: datetime | None = Field(default=None)
 
     # Roles and Permissions
     is_active: bool = Field(default=True)

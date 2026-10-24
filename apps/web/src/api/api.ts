@@ -1,7 +1,10 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios"
 import { API_ENDPOINTS } from "./endpoints"
 
-export const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000"
+export const baseURL =
+  import.meta.env.VITE_API_URL !== undefined
+    ? import.meta.env.VITE_API_URL
+    : "http://localhost:8000"
 
 // Auth is entirely httpOnly cookies (access + refresh) set by the backend —
 // no token ever touches localStorage or JS-readable state.
@@ -13,9 +16,15 @@ export const apiClient = axios.create({
   },
 })
 
+/** Fired on window when the session is gone (refresh failed too) */
+export const AUTH_EXPIRED_EVENT = "auth:expired"
+
 // Response interceptor: on 401, try one silent refresh (via the refresh
-// cookie) and retry the original request; if that fails, send the user to
-// /login. The refresh call itself is excluded to avoid an infinite loop.
+// cookie) and retry the original request; if that fails, announce
+// AUTH_EXPIRED_EVENT. AuthProvider clears the user and the guarded layout
+// sends them to sign in, so public pages (the landing) can ask "who am I?"
+// without being bounced. The refresh call itself is excluded to avoid an
+// infinite loop.
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -40,9 +49,7 @@ apiClient.interceptors.response.use(
       }
     }
 
-    if (window.location.pathname !== "/login") {
-      window.location.href = "/login"
-    }
+    window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
     return Promise.reject(error)
   }
 )

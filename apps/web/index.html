@@ -2,9 +2,37 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="theme-color"
+      content="#faf8f3"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#16140f"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="description"
+      content="Point an agent at a GitHub issue. It plans, waits for your approval, writes the code, runs your tests and opens the pull request."
+    />
+    <meta name="author" content="Tejas-pr — https://github.com/Tejas-pr" />
+    <link rel="author" href="https://github.com/Tejas-pr" />
     <title>AI Software Engineer</title>
+    <!-- Set the theme class before first paint, so a dark page never
+         flashes light (ThemeProvider takes over once React mounts) -->
+    <script>
+      try {
+        var t = localStorage.getItem("theme")
+        var dark =
+          t === "dark" ||
+          ((t === null || t === "system") &&
+            matchMedia("(prefers-color-scheme: dark)").matches)
+        document.documentElement.classList.add(dark ? "dark" : "light")
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

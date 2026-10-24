@@ -2,17 +2,20 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 import redis
-from fastapi import APIRouter, Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, text
 
+from app.api.v1.account import router as account_router
 from app.api.v1.agent import router as agent_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.github import router as github_router
+from app.api.v1.organizations import router as organizations_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.system import router as system_router
+from app.attribution import AUTHOR, AUTHOR_URL, BUILT_BY, REPOSITORY_URL
 from app.config import settings
 from app.db import get_session
 from app.rate_limiter import RateLimiter
@@ -43,9 +46,22 @@ async def lifespan(app: FastAPI):
 
 # 2. Instantiate FastAPI with the lifespan
 app = FastAPI(
+    title="AI Software Engineer API",
+    description=f"Built by {AUTHOR} — {AUTHOR_URL} · source: {REPOSITORY_URL}",
+    contact={"name": AUTHOR, "url": AUTHOR_URL},
     lifespan=lifespan,
-    dependencies=[Depends(RateLimiter(requests_limit=60, window_seconds=60))],
+    # Per client IP. A dashboard page loads several lists at once (the
+    # sidebar, overview, runs …), so this has to allow brisk navigation.
+    dependencies=[Depends(RateLimiter(requests_limit=300, window_seconds=60))],
 )
+
+
+@app.middleware("http")
+async def built_by_header(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Built-By"] = BUILT_BY
+    return response
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,6 +76,8 @@ app.add_middleware(
 # API Versioning: Create a v1 router and include sub-routers
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(auth_router)
+api_v1_router.include_router(account_router)
+api_v1_router.include_router(organizations_router)
 api_v1_router.include_router(system_router)
 api_v1_router.include_router(chat_router)
 api_v1_router.include_router(github_router)

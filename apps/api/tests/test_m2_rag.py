@@ -14,11 +14,13 @@ from sqlmodel import Session, col, delete
 from app.config import settings
 from app.db import engine
 from app.models.document_chunk import DocumentChunk
+from app.models.organization import OrganizationMember
 from app.models.project import Project
 from app.models.user import User
 from app.rag.chunking import chunk_workspace
 from app.rag.ingestion import ingest_project
 from app.rag.retrieval import search_chunks
+from app.services.organizations import create_organization
 
 pytestmark = pytest.mark.skipif(
     not settings.GEMINI_API_KEY, reason="no embedding provider configured"
@@ -46,13 +48,16 @@ def test_ingest_then_semantic_search_roundtrip(tmp_path: Path):
     )
     (tmp_path / "unrelated.py").write_text("def add_numbers(a, b):\n    return a + b\n")
 
-    with Session(engine) as session:
+    with Session(engine, expire_on_commit=False) as session:
         user = User(username="m2-test-user", email="m2-test@example.com")
         session.add(user)
         session.commit()
         session.refresh(user)
+        org = create_organization(session, user, "m2 test org")
+        assert org.id is not None
 
         project = Project(
+            organization_id=org.id,
             user_id=user.id,
             name="m2-test-project",
             github_url="https://github.com/example/m2-test",
@@ -77,5 +82,11 @@ def test_ingest_then_semantic_search_roundtrip(tmp_path: Path):
                 delete(DocumentChunk).where(col(DocumentChunk.project_id) == project.id)
             )
             session.delete(project)
+            session.exec(
+                delete(OrganizationMember).where(
+                    col(OrganizationMember.organization_id) == org.id
+                )
+            )
+            session.delete(org)
             session.delete(user)
             session.commit()

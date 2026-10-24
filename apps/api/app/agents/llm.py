@@ -12,6 +12,7 @@ again for the agent graph.
 """
 
 import json
+import logging
 import re
 import uuid
 from functools import lru_cache
@@ -31,6 +32,8 @@ from langchain_openai import ChatOpenAI
 
 from app.config import settings
 from app.services.user_api_keys import get_user_api_key
+
+logger = logging.getLogger(__name__)
 
 
 def _extract_fallback_tool_calls(text: str) -> list[ToolCall]:
@@ -225,9 +228,32 @@ def get_chat_model(
             )
 
     # Catch-all: local Ollama model wrapped with RobustChatOllama.
-    return RobustChatOllama(
-        model=model,
-        base_url=settings.OLLAMA_BASE_URL,
-        temperature=temperature,
-        keep_alive="30m",
-    )
+    ollama_kwargs: dict[str, Any] = {
+        "model": model,
+        "base_url": settings.OLLAMA_BASE_URL,
+        "temperature": temperature,
+        "keep_alive": "30m",
+    }
+    if user_id:
+        try:
+            from sqlalchemy.exc import SQLAlchemyError
+            from sqlmodel import Session, select
+
+            from app.db import engine
+            from app.models.user_resource_limit import UserResourceLimit
+
+            with Session(engine) as session:
+                limits = session.exec(
+                    select(UserResourceLimit).where(
+                        UserResourceLimit.user_id == user_id
+                    )
+                ).first()
+                if limits:
+                    ollama_kwargs["num_gpu"] = limits.ollama_num_gpu
+                    ollama_kwargs["num_thread"] = limits.ollama_num_thread
+                    ollama_kwargs["num_ctx"] = limits.max_context_window
+                    ollama_kwargs["keep_alive"] = limits.ollama_keep_alive
+        except (SQLAlchemyError, OSError):
+            logger.warning("Could not read user resource limits for user %s", user_id)
+
+    return RobustChatOllama(**ollama_kwargs)

@@ -165,7 +165,11 @@ def planner_node(state: AgentState) -> dict:
             "for a React project; write components in the project's own "
             "existing style instead). The verified tech stack line is ground "
             "truth from the project's own manifest file — trust it over "
-            "anything the research notes say, if they ever disagree."
+            "anything the research notes say, if they ever disagree. The "
+            "test_command must finish on its own: never a dev server, watcher "
+            "or anything interactive (no `npm run dev`, `npm start`, "
+            "`--watch`). If the project has no test script, use its build or "
+            "lint command instead."
         ),
         HumanMessage(user_prompt),
     ]
@@ -268,13 +272,22 @@ def coder_node(state: AgentState) -> dict:
             f"Time limit ({settings.AGENT_STEP_TIMEOUT_SECONDS}s) reached — checking file changes...",
         )
 
-    files_changed = sorted({f for s in plan["steps"] for f in s["files"]})
-
-    # Check whether any changes actually landed on disk
+    # What actually landed on disk, not what the plan said it would touch:
+    # `git status --porcelain` lines are "XY path" (renames "XY old -> new").
     status = run_command("git status --porcelain", workspace_root=workspace)
-    has_changes = not status.startswith("Command executed successfully") and bool(
-        status.strip()
+    porcelain = (
+        status.split("STDOUT:\n", 1)[1].split("\nSTDERR:", 1)[0]
+        if "STDOUT:\n" in status
+        else ""
     )
+    files_changed = sorted(
+        {
+            line[3:].split(" -> ")[-1].strip().strip('"')
+            for line in porcelain.splitlines()
+            if len(line) > 3
+        }
+    )
+    has_changes = bool(files_changed)
 
     if timed_out:
         if has_changes:
