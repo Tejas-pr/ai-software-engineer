@@ -3,6 +3,7 @@
 
 interface Env {
   BACKEND_URL?: string
+  VITE_BACKEND_URL?: string
 }
 
 interface EventContext<Env, P extends string, Data> {
@@ -18,7 +19,10 @@ interface EventContext<Env, P extends string, Data> {
 export async function onRequest(
   context: EventContext<Env, "catchall", unknown>
 ): Promise<Response> {
-  const backendBase = context.env.BACKEND_URL || "http://161.118.186.25:8000"
+  const backendBase =
+    context.env.BACKEND_URL ||
+    context.env.VITE_BACKEND_URL ||
+    "http://161.118.186.25:8000"
   const incomingUrl = new URL(context.request.url)
   const targetUrl = new URL(incomingUrl.pathname + incomingUrl.search, backendBase)
 
@@ -53,3 +57,4 @@ export async function onRequest(
     )
   }
 }
+
