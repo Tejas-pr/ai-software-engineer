@@ -1,6 +1,7 @@
 {
   "name": "@workspace/ui",
   "version": "0.0.0",
+  "author": "Tejas-pr (https://github.com/Tejas-pr)",
   "type": "module",
   "private": true,
   "scripts": {
