@@ -20,6 +20,7 @@ import {
   Sparkles,
   Square,
   Terminal,
+  Trash2,
 } from "lucide-react"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Kbd } from "@workspace/ui/components/kbd"
@@ -38,17 +39,20 @@ import {
   type Plan,
 } from "@/api/agent.api"
 import {
+  deleteProject,
   getProject,
   getProjectIssues,
   reconnectProject,
   type Project,
   type ProjectIssue,
 } from "@/api/projects.api"
+import { githubLoginUrl } from "@/api/auth.api"
 import { getAvailableModels, type AvailableModels } from "@/api/settings.api"
 import { ApplicationBadge } from "@/components/molecules/application/application-badge"
 import { ApplicationButton } from "@/components/molecules/application/application-button"
 import { ApplicationCard } from "@/components/molecules/application/application-card"
 import { ApplicationInput } from "@/components/molecules/application/application-input"
+import { ApplicationPopup } from "@/components/molecules/application/application-popup"
 import { ApplicationSelection } from "@/components/molecules/application/application-selection"
 import { ApplicationTabs } from "@/components/molecules/application/application-tabs"
 import { PageHeader } from "@/components/molecules/common/page-header"
@@ -210,6 +214,11 @@ export function ProjectDetailPage() {
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null)
   const [issues, setIssues] = useState<ProjectIssue[]>([])
   const [issuesLoading, setIssuesLoading] = useState(false)
+  const [issuesError, setIssuesError] = useState<string | null>(null)
+  const [isGithubAuthExpired, setIsGithubAuthExpired] = useState(false)
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
+  const [isDeletingProject, setIsDeletingProject] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [task, setTask] = useState("")
   const [model, setModel] = useState(ALL_CLOUD_MODELS[0].id)
   const [skipTests, setSkipTests] = useState(false)
@@ -261,10 +270,40 @@ export function ProjectDetailPage() {
 
   const refreshIssues = () => {
     setIssuesLoading(true)
+    setIssuesError(null)
+    setIsGithubAuthExpired(false)
     getProjectIssues(id)
-      .then(setIssues)
-      .catch(() => setIssues([]))
+      .then((data) => {
+        setIssues(data)
+      })
+      .catch((err) => {
+        setIssues([])
+        const message = describeError(err, "Couldn't load issues")
+        setIssuesError(message)
+        const isAuthError =
+          (err as { response?: { status?: number } })?.response?.status === 401 ||
+          (err as { response?: { status?: number } })?.response?.status === 400 ||
+          message.toLowerCase().includes("github") ||
+          message.toLowerCase().includes("re-authenticate")
+        if (isAuthError) {
+          setIsGithubAuthExpired(true)
+        }
+      })
       .finally(() => setIssuesLoading(false))
+  }
+
+  const handleDeleteProject = async () => {
+    if (!project) return
+    setIsDeletingProject(true)
+    setDeleteError(null)
+    try {
+      await deleteProject(project.id)
+      notifyOrgDataChanged()
+      navigate(paths.projects.root, { replace: true })
+    } catch (err) {
+      setDeleteError(describeError(err, "Couldn't disconnect project"))
+      setIsDeletingProject(false)
+    }
   }
 
   // Poll while background clone is pending
@@ -282,7 +321,19 @@ export function ProjectDetailPage() {
     if (project?.status === "ready") {
       getProjectIssues(id)
         .then(setIssues)
-        .catch(() => setIssues([]))
+        .catch((err) => {
+          setIssues([])
+          const message = describeError(err, "Couldn't load issues")
+          setIssuesError(message)
+          const isAuthError =
+            (err as { response?: { status?: number } })?.response?.status === 401 ||
+            (err as { response?: { status?: number } })?.response?.status === 400 ||
+            message.toLowerCase().includes("github") ||
+            message.toLowerCase().includes("re-authenticate")
+          if (isAuthError) {
+            setIsGithubAuthExpired(true)
+          }
+        })
     }
   }, [project?.status, id])
 
@@ -666,6 +717,16 @@ export function ProjectDetailPage() {
                 GitHub
               </ApplicationButton>
             </a>
+
+            <ApplicationButton
+              variant="ghost"
+              size="sm"
+              iconLeft={<Trash2 className="size-3.5 text-destructive" />}
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => setIsConfirmDeleteOpen(true)}
+            >
+              Disconnect
+            </ApplicationButton>
           </div>
         }
       />
@@ -756,8 +817,28 @@ export function ProjectDetailPage() {
                 </div>
               </div>
 
+              {isGithubAuthExpired && (
+                <div className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-2.5 text-xs">
+                  <div className="flex items-center gap-1.5 font-medium text-destructive">
+                    <AlertCircle className="size-3.5 shrink-0" />
+                    <span>GitHub session expired</span>
+                  </div>
+                  <p className="text-3xs/relaxed text-muted-foreground">
+                    Your GitHub authorization has expired. Re-authenticate to load open issues and authorize PR creation.
+                  </p>
+                  <ApplicationButton
+                    size="sm"
+                    variant="highlight"
+                    className="self-start text-3xs"
+                    onClick={() => window.location.assign(githubLoginUrl())}
+                  >
+                    Reconnect GitHub
+                  </ApplicationButton>
+                </div>
+              )}
+
               {/* GitHub Issue Picker */}
-              {issues.length > 0 && (
+              {!isGithubAuthExpired && issues.length > 0 && (
                 <div className="space-y-1">
                   <label className="text-3xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
                     Connect GitHub Issue
@@ -780,6 +861,19 @@ export function ProjectDetailPage() {
                     placeholder="Select issue to solve…"
                     indicator="chevron-down"
                   />
+                </div>
+              )}
+
+              {!isGithubAuthExpired && issues.length === 0 && !issuesLoading && (
+                <div className="flex items-center justify-between text-3xs text-muted-foreground">
+                  <span>{issuesError ? issuesError : "No open issues found."}</span>
+                  <button
+                    type="button"
+                    onClick={refreshIssues}
+                    className="text-link hover:underline"
+                  >
+                    Check again
+                  </button>
                 </div>
               )}
 
@@ -1436,6 +1530,28 @@ export function ProjectDetailPage() {
           </div>
         </div>
       )}
+
+      <ApplicationPopup
+        isOpen={isConfirmDeleteOpen}
+        onClose={() => setIsConfirmDeleteOpen(false)}
+        size="sm"
+        title={`Disconnect ${project.name}?`}
+        description="Its runs, search index, and cloned workspace will be permanently deleted. The repository on GitHub will not be touched."
+        secondaryAction={{
+          label: "Cancel",
+          onClick: () => setIsConfirmDeleteOpen(false),
+        }}
+        primaryAction={{
+          label: isDeletingProject ? "Disconnecting…" : "Disconnect",
+          variant: "destructive",
+          disabled: isDeletingProject,
+          onClick: handleDeleteProject,
+        }}
+      >
+        {deleteError && (
+          <p className="text-xs text-destructive">{deleteError}</p>
+        )}
+      </ApplicationPopup>
     </div>
   )
 }

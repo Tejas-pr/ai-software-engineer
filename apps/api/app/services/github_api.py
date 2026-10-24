@@ -11,6 +11,7 @@ copy-pasted per call site.
 """
 
 import httpx
+from fastapi import HTTPException
 
 GITHUB_API = "https://api.github.com"
 
@@ -37,6 +38,11 @@ async def list_user_repos(token: str) -> list[dict]:
             headers=github_headers(token),
             params={"sort": "updated", "per_page": 50},
         )
+        if response.status_code == 401:
+            raise HTTPException(
+                status_code=401,
+                detail="GitHub authorization has expired or was revoked. Please re-authenticate.",
+            )
         response.raise_for_status()
         return response.json()
 
@@ -49,6 +55,11 @@ async def list_repo_issues(token: str, owner: str, repo: str) -> list[dict]:
             headers=github_headers(token),
             params={"state": "open", "per_page": 50},
         )
+        if response.status_code == 401:
+            raise HTTPException(
+                status_code=401,
+                detail="GitHub authorization has expired or was revoked. Please re-authenticate.",
+            )
         response.raise_for_status()
         # The issues endpoint also returns PRs; they carry a "pull_request" key.
         return [issue for issue in response.json() if "pull_request" not in issue]

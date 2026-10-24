@@ -14,6 +14,7 @@ import { ApplicationPopup } from "@/components/molecules/application/application
 import { showDemoRestrictionNotice } from "@/lib/common/demo-notice"
 import { useSystemConfig } from "@/hooks/common/use-system-config"
 import { describeError } from "@/lib/common/api-error"
+import { githubLoginUrl } from "@/api/auth.api"
 
 /** Pick one of your GitHub repositories to connect to the organization */
 export function ConnectRepositoryPopup({
@@ -33,6 +34,7 @@ export function ConnectRepositoryPopup({
   const [query, setQuery] = useState("")
   const [busyUrl, setBusyUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isGithubExpired, setIsGithubExpired] = useState(false)
   const { isRestricted } = useSystemConfig()
 
   useEffect(() => {
@@ -41,7 +43,16 @@ export function ConnectRepositoryPopup({
       .then(setRepos)
       .catch((err) => {
         setRepos([])
-        setError(describeError(err, "Couldn't load your GitHub repositories"))
+        const msg = describeError(err, "Couldn't load your GitHub repositories")
+        setError(msg)
+        if (
+          (err as { response?: { status?: number } })?.response?.status === 401 ||
+          (err as { response?: { status?: number } })?.response?.status === 400 ||
+          msg.toLowerCase().includes("github") ||
+          msg.toLowerCase().includes("re-authenticate")
+        ) {
+          setIsGithubExpired(true)
+        }
       })
   }, [isOpen, repos])
 
@@ -87,7 +98,21 @@ export function ConnectRepositoryPopup({
           onChange={(e) => setQuery(e.target.value)}
           autoFocus
         />
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        {error && (
+          <div className="flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+            <p>{error}</p>
+            {isGithubExpired && (
+              <ApplicationButton
+                size="sm"
+                variant="highlight"
+                className="self-start text-xs"
+                onClick={() => window.location.assign(githubLoginUrl())}
+              >
+                Reconnect with GitHub
+              </ApplicationButton>
+            )}
+          </div>
+        )}
         <ul className="flex max-h-[min(24rem,55svh)] flex-col overflow-y-auto rounded-xl border">
           {repos === null
             ? Array.from({ length: 5 }).map((_, i) => (
