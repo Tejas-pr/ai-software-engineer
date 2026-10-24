@@ -119,6 +119,10 @@ Product
 - [x] Unify toolbar search inputs, filters, and action buttons across all
       views with consistent height (36px / h-9), border-radius (8px / rounded-lg),
       and semantic token styling.
+- [x] Global search command palette: `Cmd+K` / `Ctrl+K` and topbar trigger
+      with frosted glass palette (`AppSearchDialog`), dynamic lazy loading,
+      `Kbd` primitive, recent selections persistence, and instant navigation
+      across actions, pages, connected repositories, and agent runs.
 
 Reliability and hardening (see `kb/known-issues.md`)
 - [ ] Cancel that interrupts the running node, not just between steps

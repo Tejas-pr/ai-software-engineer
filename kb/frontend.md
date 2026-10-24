@@ -122,8 +122,8 @@ RouteErrorBoundary`; layouts have `HydrateFallback` skeletons.
 ## The app shell (sidebar-09)
 
 `AppLayout` = `OrganizationProvider` → `TooltipProvider` →
-`SidebarProvider` (`--sidebar-width: 21rem`) → `AppSidebar` +
-`SidebarInset` (`AppTopbar` + the routed page).
+`SidebarProvider` (`--sidebar-width: 21rem`) → `AppShell` (`AppSidebar` +
+`SidebarInset` (`AppTopbar` + the routed page) + lazy-loaded `AppSearchDialog`).
 
 `AppSidebar` follows shadcn's **sidebar-09** block (installed with `npx
 shadcn add sidebar-09`): an **icon rail** (brand mark, the `APP_NAV`
@@ -132,7 +132,19 @@ sections with a sliding active marker, `NavUser` at the foot) and a
 list, recent runs, the pipeline, or settings links depending on the
 section; "Built by" at the foot). Cmd/Ctrl+B or the top-bar trigger
 collapses it to the rail; on phones it's a sheet. `AppTopbar` shows the
-organization and the route's `handle.title` as a breadcrumb.
+organization, the route's `handle.title` as a breadcrumb, a `⌘K` global
+search button, and the theme toggle.
+
+### Global search (⌘K command palette)
+
+`AppSearchDialog` provides a Spotlight-like frosted glass palette (`variant="glass"`)
+triggered via `Cmd+K` / `Ctrl+K` (via `useKeyboardShortcuts`) or the topbar search button.
+It searches:
+- **Actions**: Dark/light/system theme, sidebar collapse/expand, connect repository, API keys, profile, sign out.
+- **Pages**: Overview, Repositories, Runs, Agents pipeline, Organization settings, Members, API keys, Profile.
+- **Records**: Active organization's repositories and agent runs (cached in memory via `useOrgProjects` / `useOrgRuns`).
+- **Recents**: Last 5 picked items saved in `localStorage` under `ase:search_recents` (validated via Zod schema).
+Lazy-loaded via dynamic import so `cmdk` is isolated in its own bundle chunk and never loaded until invoked.
 
 ## Organizations in the UI
 

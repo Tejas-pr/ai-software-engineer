@@ -1,16 +1,76 @@
+import { lazy, Suspense, useCallback, useState } from "react"
 import { Navigate, Outlet, useLocation } from "react-router-dom"
-import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar"
+import {
+  SidebarInset,
+  SidebarProvider,
+  useSidebar,
+} from "@workspace/ui/components/sidebar"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
+import type { User } from "@/api/user.api"
 import { RouteTransition } from "@/components/molecules/common/route-transition"
 import { PageSkeleton } from "@/components/molecules/skeletons/page-skeleton"
 import { AppSidebar } from "@/components/organisms/common/app-sidebar"
 import { AppTopbar } from "@/components/organisms/common/app-topbar"
 import { useAuth } from "@/hooks/auth/use-auth"
+import { useKeyboardShortcuts } from "@/hooks/common/use-keyboard-shortcuts"
 import { paths } from "@/lib/common/paths"
 import { OrganizationProvider } from "@/providers/organization/organization-provider"
 
+const AppSearchDialog = lazy(() =>
+  import("@/components/molecules/common/app-search-dialog").then((m) => ({
+    default: m.AppSearchDialog,
+  }))
+)
+
 // Rail (3rem) + section panel
 const SIDEBAR_SIZE = { "--sidebar-width": "21rem" } as React.CSSProperties
+
+function AppShell({ user }: { user: User }) {
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [hasOpenedSearch, setHasOpenedSearch] = useState(false)
+  const { toggleSidebar } = useSidebar()
+
+  const handleOpenSearch = useCallback(() => {
+    setHasOpenedSearch(true)
+    setSearchOpen(true)
+  }, [])
+
+  const handleToggleSearch = useCallback(() => {
+    setHasOpenedSearch(true)
+    setSearchOpen((prev) => !prev)
+  }, [])
+
+  useKeyboardShortcuts([
+    {
+      key: "k",
+      mod: true,
+      allowInInput: true,
+      allowInDialog: true,
+      run: handleToggleSearch,
+    },
+  ])
+
+  return (
+    <>
+      <AppSidebar user={user} />
+      <SidebarInset className="min-w-0">
+        <AppTopbar onOpenSearch={handleOpenSearch} />
+        <RouteTransition className="flex flex-1 flex-col">
+          <Outlet />
+        </RouteTransition>
+      </SidebarInset>
+      <Suspense fallback={null}>
+        {hasOpenedSearch && (
+          <AppSearchDialog
+            open={searchOpen}
+            onOpenChange={setSearchOpen}
+            onToggleSidebar={toggleSidebar}
+          />
+        )}
+      </Suspense>
+    </>
+  )
+}
 
 // The signed-in app. The API checks every request too; this keeps signed-out
 // visitors (or a session that just expired, or someone pressing Back after
@@ -42,13 +102,7 @@ export function AppLayout() {
     <OrganizationProvider>
       <TooltipProvider>
         <SidebarProvider style={SIDEBAR_SIZE}>
-          <AppSidebar user={user} />
-          <SidebarInset className="min-w-0">
-            <AppTopbar />
-            <RouteTransition className="flex flex-1 flex-col">
-              <Outlet />
-            </RouteTransition>
-          </SidebarInset>
+          <AppShell user={user} />
         </SidebarProvider>
       </TooltipProvider>
     </OrganizationProvider>

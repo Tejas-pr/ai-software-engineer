@@ -12,6 +12,8 @@ export const STORAGE_KEYS = {
   afterSignin: "ase:after_signin",
   /** The organization picked in the switcher (its id) */
   organization: "ase:organization",
+  /** Recents stored from the ⌘K command palette */
+  searchRecents: "ase:search_recents",
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
