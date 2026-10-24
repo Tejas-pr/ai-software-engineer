@@ -5,3 +5,5 @@
 5. need refrsh and session tokens, since after somedays it is expliring the github issue section not redering since the token is expired so.. it is showing error ... we need to tell re-auth ..
 6. Need proper error handling and message need to show to the user.
 7. delete the project option.
+8. need to add the rate limiter it is there?, list all the secury I miss in the application.
+9. need to add capach using cloudefare.
