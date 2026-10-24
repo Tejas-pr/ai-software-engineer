@@ -26,6 +26,7 @@ const STEPS = [
     title: "Model access",
     heading: "Give the agents a model",
     lead: "Add your own API key for Gemini, Claude or OpenAI — runs use your quota. Or run everything on local Ollama models.",
+    optional: true,
   },
   {
     title: "First repository",

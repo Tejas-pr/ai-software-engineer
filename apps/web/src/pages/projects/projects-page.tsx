@@ -12,6 +12,7 @@ import {
 import { ApplicationButton } from "@/components/molecules/application/application-button"
 import { ApplicationInput } from "@/components/molecules/application/application-input"
 import { ApplicationPopup } from "@/components/molecules/application/application-popup"
+import { showDemoRestrictionNotice } from "@/lib/common/demo-notice"
 import { PageHeader } from "@/components/molecules/common/page-header"
 import {
   ViewToggle,
@@ -19,6 +20,7 @@ import {
 } from "@/components/molecules/common/view-toggle"
 import { ConnectRepositoryPopup } from "@/components/organisms/projects/connect-repository-popup"
 import { ProjectList } from "@/components/organisms/projects/project-list"
+import { useSystemConfig } from "@/hooks/common/use-system-config"
 import { useOrganization } from "@/hooks/organization/use-organization"
 import {
   notifyOrgDataChanged,
@@ -34,6 +36,7 @@ const POLL_MS = 3000
 
 export function ProjectsPage() {
   const { current } = useOrganization()
+  const { isRestricted } = useSystemConfig()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { projects, reload } = useOrgProjects(current.id)
@@ -144,10 +147,20 @@ export function ProjectsPage() {
           latestRuns={latestRuns}
           view={view}
           actions={{
-            onReindex: (p) =>
-              act(() => reindexProject(p.id), "Couldn't start indexing"),
-            onRetryClone: (p) =>
-              act(() => reconnectProject(p), "Couldn't retry the clone"),
+            onReindex: (p) => {
+              if (isRestricted) {
+                showDemoRestrictionNotice()
+                return
+              }
+              act(() => reindexProject(p.id), "Couldn't start indexing")
+            },
+            onRetryClone: (p) => {
+              if (isRestricted) {
+                showDemoRestrictionNotice()
+                return
+              }
+              act(() => reconnectProject(p), "Couldn't retry the clone")
+            },
             onDisconnect: setDisconnecting,
           }}
         />

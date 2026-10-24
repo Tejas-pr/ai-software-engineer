@@ -21,13 +21,14 @@ export async function saveOnboardingOrganization(
   return res.data
 }
 
-/** Last step: the API checks there's an organization and a key (or local
- * models), then marks the user onboarded */
+/** Last step: marks the user onboarded once their organization is ready */
 export async function completeOnboarding(
-  useLocalModels = false
+  useLocalModels = false,
+  skipModel = true
 ): Promise<User> {
   const res = await apiClient.post<User>(API_ENDPOINTS.ONBOARDING_COMPLETE, {
     use_local_models: useLocalModels,
+    skip_model: skipModel,
   })
   return res.data
 }

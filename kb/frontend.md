@@ -27,6 +27,7 @@ lib/
   common/attribution.ts  author + repo URLs (the "Built by" stamp)
   common/local-storage.ts  the only place web storage is touched (try/catch)
   common/api-error.ts    describeError(err, fallback) → the API's detail
+  common/demo-notice.ts  showDemoRestrictionNotice() → dispatches event to open restriction popup modal
   common/dates.ts        parseApiDate (API sends UTC without a zone), timeAgo
   common/status.ts       run / project / index status → badge + label
   common/app-nav.ts      the sidebar rail sections, sectionFor(pathname)

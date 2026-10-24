@@ -65,7 +65,7 @@ def people() -> Iterator[dict[str, User]]:
     # expire_on_commit=False: the users stay readable after their session
     # closes, as the stand-in "current user" for each request
     with Session(engine, expire_on_commit=False) as session:
-        users = {n: _make_user(session, n) for n in ("alice", "bob", "carol")}
+        users = {n: _make_user(session, n) for n in ("alice", "bob", "carol", "dave")}
     yield users
     _cleanup()
 
@@ -186,6 +186,19 @@ def test_onboarding_needs_an_org_and_a_model(people, api, monkeypatch):
         )
         session.commit()
     done = api.post("/api/v1/account/onboarding/complete", json={})
+    assert done.status_code == 200
+    assert done.json()["onboarded_at"] is not None
+
+
+def test_onboarding_can_skip_model(people, api):
+    as_user(people["dave"])
+    created = api.post(
+        "/api/v1/account/onboarding/organization", json={"name": "Orgtest Dave"}
+    )
+    assert created.status_code == 200
+
+    # Can complete onboarding by skipping the model step
+    done = api.post("/api/v1/account/onboarding/complete", json={"skip_model": True})
     assert done.status_code == 200
     assert done.json()["onboarded_at"] is not None
 

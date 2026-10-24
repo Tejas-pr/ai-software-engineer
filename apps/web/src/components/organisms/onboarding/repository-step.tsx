@@ -9,6 +9,7 @@ import {
 } from "@/api/projects.api"
 import { ApplicationButton } from "@/components/molecules/application/application-button"
 import { ApplicationInput } from "@/components/molecules/application/application-input"
+import { showDemoRestrictionNotice } from "@/lib/common/demo-notice"
 import { useSystemConfig } from "@/hooks/common/use-system-config"
 import { describeError } from "@/lib/common/api-error"
 
@@ -50,9 +51,7 @@ export function RepositoryStep({
 
   async function handleConnect(repo: GithubRepo) {
     if (isRestricted) {
-      setError(
-        "Repository cloning is disabled on this low-resource demo instance. You can finish onboarding and explore the dashboard."
-      )
+      showDemoRestrictionNotice()
       return
     }
     setBusyUrl(repo.url)

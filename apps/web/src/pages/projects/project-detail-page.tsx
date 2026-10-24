@@ -23,7 +23,6 @@ import {
 } from "lucide-react"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Kbd } from "@workspace/ui/components/kbd"
-import { toast } from "@workspace/ui/components/toast"
 import { cn } from "@workspace/ui/lib/utils"
 import { useSystemConfig } from "@/hooks/common/use-system-config"
 import {
@@ -53,6 +52,7 @@ import { ApplicationInput } from "@/components/molecules/application/application
 import { ApplicationSelection } from "@/components/molecules/application/application-selection"
 import { ApplicationTabs } from "@/components/molecules/application/application-tabs"
 import { PageHeader } from "@/components/molecules/common/page-header"
+import { showDemoRestrictionNotice } from "@/lib/common/demo-notice"
 import { notifyOrgDataChanged } from "@/hooks/organization/use-org-data"
 import { describeError } from "@/lib/common/api-error"
 import { timeAgo } from "@/lib/common/dates"
@@ -456,12 +456,7 @@ export function ProjectDetailPage() {
 
   const handleStartRun = async () => {
     if (isRestricted) {
-      toast.add({
-        title: "Demo Mode Restricted",
-        description:
-          "Agent execution is disabled on this low-resource demo instance. Please clone the project to run locally or check the GitHub video walkthrough.",
-        type: "warning",
-      })
+      showDemoRestrictionNotice()
       return
     }
     if (!project || !task.trim()) return
@@ -488,12 +483,7 @@ export function ProjectDetailPage() {
 
   const handleApproval = async (approved: boolean) => {
     if (isRestricted) {
-      toast.add({
-        title: "Demo Mode Restricted",
-        description:
-          "Agent execution is disabled on this low-resource demo instance. Please clone the project to run locally or check the GitHub video walkthrough.",
-        type: "warning",
-      })
+      showDemoRestrictionNotice()
       return
     }
     if (!run) return
@@ -510,12 +500,7 @@ export function ProjectDetailPage() {
 
   const handleRetryRun = async () => {
     if (isRestricted) {
-      toast.add({
-        title: "Demo Mode Restricted",
-        description:
-          "Agent execution is disabled on this low-resource demo instance. Please clone the project to run locally or check the GitHub video walkthrough.",
-        type: "warning",
-      })
+      showDemoRestrictionNotice()
       return
     }
     if (!run || run.status !== "failed") return

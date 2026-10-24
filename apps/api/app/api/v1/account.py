@@ -40,6 +40,8 @@ class OrganizationNameIn(BaseModel):
 class CompleteIn(BaseModel):
     # Finish without a key of their own, running on local Ollama models.
     use_local_models: bool = False
+    # Finish without adding a model key now (can add later in Settings).
+    skip_model: bool = False
 
 
 @router.patch("/", response_model=UserPublic)
@@ -110,7 +112,7 @@ def onboarding_complete(
         ).first()
         is not None
     )
-    if not has_key:
+    if not has_key and not body.skip_model:
         if not body.use_local_models:
             raise HTTPException(
                 status_code=400,

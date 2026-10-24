@@ -14,6 +14,8 @@ export const STORAGE_KEYS = {
   organization: "ase:organization",
   /** Recents stored from the ⌘K command palette */
   searchRecents: "ase:search_recents",
+  /** Flag indicating whether the demo instance notice modal has been acknowledged */
+  demoNoticeDismissed: "ase:demo_notice_dismissed",
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]

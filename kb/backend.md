@@ -69,7 +69,7 @@ Cookies: `access_token` (path `/`, `ACCESS_TOKEN_EXPIRE_MINUTES`, default
 |--------|------|-------|
 | PATCH | `/` | `{display_name}` → the user. |
 | POST | `/onboarding/organization` | `{name}` → creates the user's personal organization (owner), or renames it if it exists. |
-| POST | `/onboarding/complete` | `{use_local_models=false}` → sets `onboarded_at` and returns the user. 400 unless they have an organization **and** a stored API key — or `use_local_models` with Ollama reachable and tool-capable models installed. Idempotent once onboarded. |
+| POST | `/onboarding/complete` | `{use_local_models=false, skip_model=false}` → sets `onboarded_at` and returns the user. 400 unless they have an organization **and** (a stored API key, `skip_model=true`, or `use_local_models` with Ollama reachable and tool-capable models installed). Idempotent once onboarded. |
 
 ### Organizations — `/orgs`
 

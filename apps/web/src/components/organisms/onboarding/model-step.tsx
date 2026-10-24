@@ -70,15 +70,21 @@ export function ModelStep({
         )}
       </div>
 
-      <ApplicationButton
-        size="lg"
-        className="self-start"
-        disabled={!hasKey}
-        onClick={() => onDone({ useLocalModels: false })}
-        iconRight={<ArrowRight />}
-      >
-        {hasKey ? "Continue" : "Add a key to continue"}
-      </ApplicationButton>
+      <div className="flex flex-wrap items-center gap-3">
+        <ApplicationButton
+          size="lg"
+          variant="highlight"
+          onClick={() => onDone({ useLocalModels: false })}
+          iconRight={hasKey ? <ArrowRight /> : undefined}
+        >
+          {hasKey ? "Continue" : "Skip for now"}
+        </ApplicationButton>
+        {!hasKey && (
+          <span className="text-xs text-muted-foreground">
+            You can add an API key at any time in Settings.
+          </span>
+        )}
+      </div>
     </div>
   )
 }
