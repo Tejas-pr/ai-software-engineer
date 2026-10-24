@@ -13,15 +13,31 @@ interface EventContext<Env, P extends string, Data> {
   data: Data
 }
 
+function resolveBackend(envUrl?: string): string {
+  const fallback = "https://define-subscribers-attention-leon.trycloudflare.com"
+  if (!envUrl) return fallback
+  const trimmed = envUrl.trim().replace(/\/+$/, "")
+  try {
+    const parsed = new URL(trimmed)
+    // Cloudflare Workers forbid raw IP destinations (Error 1003)
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(parsed.hostname)) {
+      return fallback
+    }
+    return trimmed
+  } catch {
+    return fallback
+  }
+}
+
 export async function onRequest(
   context: EventContext<Env, "catchall", unknown>
 ): Promise<Response> {
-  const backendBase =
-    context.env.BACKEND_URL ||
-    "https://define-subscribers-attention-leon.trycloudflare.com"
-
+  const backendBase = resolveBackend(context.env.BACKEND_URL)
   const incomingUrl = new URL(context.request.url)
-  const targetUrl = new URL(incomingUrl.pathname + incomingUrl.search, backendBase)
+  const targetUrl = new URL(
+    incomingUrl.pathname + incomingUrl.search,
+    backendBase
+  )
 
   const requestHeaders = new Headers(context.request.headers)
   requestHeaders.set("Host", targetUrl.host)
@@ -37,7 +53,25 @@ export async function onRequest(
 
   try {
     const upstreamResponse = await fetch(targetUrl.toString(), requestInit)
-    const responseHeaders = new Headers(upstreamResponse.headers)
+    const responseHeaders = new Headers()
+
+    for (const [key, value] of upstreamResponse.headers.entries()) {
+      if (key.toLowerCase() !== "set-cookie") {
+        responseHeaders.set(key, value)
+      }
+    }
+
+    // Rewrite Set-Cookie headers so cookies become first-party on pages.dev
+    const getCookies = (upstreamResponse.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie
+    const setCookies = typeof getCookies === "function"
+      ? getCookies.call(upstreamResponse.headers)
+      : (upstreamResponse.headers.get("Set-Cookie") ? [upstreamResponse.headers.get("Set-Cookie")!] : [])
+
+    for (const rawCookie of setCookies) {
+      // Strip foreign Domain attribute so cookie binds to pages.dev as host-only first party
+      const cleanCookie = rawCookie.replace(/Domain=[^;]+;?\s*/gi, "")
+      responseHeaders.append("Set-Cookie", cleanCookie)
+    }
 
     return new Response(upstreamResponse.body, {
       status: upstreamResponse.status,

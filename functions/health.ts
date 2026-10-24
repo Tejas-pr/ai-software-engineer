@@ -13,13 +13,26 @@ interface EventContext<Env, P extends string, Data> {
   data: Data
 }
 
+function resolveBackend(envUrl?: string): string {
+  const fallback = "https://define-subscribers-attention-leon.trycloudflare.com"
+  if (!envUrl) return fallback
+  const trimmed = envUrl.trim().replace(/\/+$/, "")
+  try {
+    const parsed = new URL(trimmed)
+    // Cloudflare Workers forbid raw IP destinations (Error 1003)
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(parsed.hostname)) {
+      return fallback
+    }
+    return trimmed
+  } catch {
+    return fallback
+  }
+}
+
 export async function onRequest(
   context: EventContext<Env, string, unknown>
 ): Promise<Response> {
-  const backendBase =
-    context.env.BACKEND_URL ||
-    "https://define-subscribers-attention-leon.trycloudflare.com"
-
+  const backendBase = resolveBackend(context.env.BACKEND_URL)
   const incomingUrl = new URL(context.request.url)
   const targetUrl = new URL("/health" + incomingUrl.search, backendBase)
 
