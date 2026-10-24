@@ -15,10 +15,13 @@ main.tsx                 console signature; ThemeProvider → AuthProvider → A
 App.tsx                  <RouterProvider router={router} />
 router.ts                every route; pages are lazy chunks; handle.title → breadcrumb
 api/                     axios client + one module per backend area
-  api.ts                 apiClient (withCredentials), 401 → refresh → AUTH_EXPIRED_EVENT
+  api.ts                 apiClient (withCredentials), 401 → refresh → AUTH_EXPIRED_EVENT; auto-relative baseURL on *.pages.dev
   endpoints.ts           every backend path, in one object
   auth.api.ts user.api.ts account.api.ts organizations.api.ts
   projects.api.ts agent.api.ts settings.api.ts
+functions/               Cloudflare Pages Functions edge proxy (/api/* and /health)
+  health.ts              proxies /health to backend tunnel with Host rewrite
+  api/[[catchall]].ts    proxies /api/* to backend tunnel, rewrites Set-Cookie for first-party scope
 lib/
   common/paths.ts        every app route — link with these, never literals
   common/attribution.ts  author + repo URLs (the "Built by" stamp)
