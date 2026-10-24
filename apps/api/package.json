@@ -1,6 +1,7 @@
 {
   "name": "api",
   "version": "0.0.1",
+  "author": "Tejas-pr (https://github.com/Tejas-pr)",
   "private": true,
   "scripts": {
     "start": "uv run uvicorn app.main:app",

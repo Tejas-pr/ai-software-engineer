@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 
 import httpx
@@ -20,12 +21,17 @@ AUTH_PATH = "/api/v1/accounts/auth"
 
 
 class UserPublic(SQLModel):
-    """What we're willing to hand back to the client — never hashed_password."""
+    """What we're willing to hand back to the client — never hashed_password
+    or the GitHub token."""
 
     id: int
     username: str
     email: str
     is_active: bool
+    display_name: str | None
+    avatar_url: str | None
+    # null until the user has created their first organization (onboarding)
+    onboarded_at: datetime | None
 
 
 def _set_auth_cookies(response: Response, user: User) -> None:
@@ -132,6 +138,11 @@ async def github_callback(code: str, session: Session = Depends(get_session)):
     # Every login carries a fresh GitHub token (scope may have just changed,
     # or the old one may have been revoked) — always store the latest one.
     db_user.github_access_token = encrypt_token(github_token)
+    # Keep the avatar current; the display name only seeds an empty one —
+    # once the user edits it on their profile, GitHub doesn't overwrite it.
+    db_user.avatar_url = github_user.get("avatar_url") or db_user.avatar_url
+    if not db_user.display_name:
+        db_user.display_name = github_user.get("name") or username
     session.add(db_user)
     session.commit()
     session.refresh(db_user)

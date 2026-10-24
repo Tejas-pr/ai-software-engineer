@@ -9,11 +9,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
-from app.agents.llm import KNOWN_PROVIDERS
+from app.agents.llm import KNOWN_PROVIDERS, get_chat_model
 from app.api.deps import get_current_user
 from app.db import get_session
 from app.models.user import User
 from app.models.user_api_key import UserApiKey
+from app.services.provider_keys import (
+    InvalidKeyError,
+    KeyCheckUnavailableError,
+    verify_provider_key,
+)
 from app.utils.crypto import decrypt_token, encrypt_token
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -89,7 +94,11 @@ def get_available_models(
     """
     from app.agents.llm import _PROVIDERS
     from app.config import settings as app_settings
-    from app.services.ollama import list_local_ollama_models, recommend_coding_model
+    from app.services.ollama import (
+        list_installed_tool_models,
+        recommend_coding_model,
+        settings_ollama_fallback,
+    )
 
     rows = session.exec(
         select(UserApiKey).where(UserApiKey.user_id == current_user.id)
@@ -102,12 +111,16 @@ def get_available_models(
         if getattr(app_settings, key_setting, "")
     }
 
-    local_models = list_local_ollama_models()
+    installed = list_installed_tool_models()
+    local_models = installed if installed is not None else settings_ollama_fallback()
 
     return {
         "user_providers": sorted(user_providers),
         "platform_providers": sorted(platform_providers),
         "local_models": local_models,
+        # True only when Ollama answered and has tool-capable models
+        # installed — `local_models` above may be the static fallback list.
+        "ollama_available": bool(installed),
         "recommended_coding_model": recommend_coding_model(local_models),
     }
 
@@ -120,6 +133,16 @@ def set_api_key(
     session: Session = Depends(get_session),
 ):
     _require_known_provider(provider)
+    api_key = body.api_key.strip()
+    try:
+        verify_provider_key(provider, api_key)
+    except InvalidKeyError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except KeyCheckUnavailableError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Couldn't reach {provider} to check the key — try again in a moment.",
+        ) from e
     # current_user.id is `int | None` in SQLModel's type system (pre-insert
     # rows), but authenticated users are always persisted — assert to narrow.
     assert current_user.id is not None
@@ -129,7 +152,7 @@ def set_api_key(
         )
     ).first()
 
-    encrypted = encrypt_token(body.api_key)
+    encrypted = encrypt_token(api_key)
     if existing:
         existing.encrypted_key = encrypted
         session.add(existing)
@@ -140,7 +163,9 @@ def set_api_key(
             )
         )
     session.commit()
-    return {"provider": provider, "configured": True, "masked_key": _mask(body.api_key)}
+    # Cached clients hold the key they were built with
+    get_chat_model.cache_clear()
+    return {"provider": provider, "configured": True, "masked_key": _mask(api_key)}
 
 
 @router.delete("/api-keys/{provider}")
@@ -158,4 +183,5 @@ def delete_api_key(
     if existing:
         session.delete(existing)
         session.commit()
+        get_chat_model.cache_clear()
     return {"provider": provider, "configured": False}

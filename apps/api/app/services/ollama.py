@@ -60,14 +60,22 @@ def _supports_tools(client: httpx.Client, name: str) -> bool:
         return False
 
 
-def list_local_ollama_models() -> list[dict]:
+def settings_ollama_fallback() -> list[dict]:
+    """The static `OLLAMA_MODELS` list in the same shape as live entries —
+    what the model picker shows when the Ollama daemon isn't reachable at
+    all. It can't be capability-checked, so it may include models that
+    don't actually support tools."""
+    return [
+        {"id": m, "size_gb": None, "parameter_size": None, "family": None}
+        for m in settings.OLLAMA_MODELS
+    ]
+
+
+def list_installed_tool_models() -> list[dict] | None:
     """Hits Ollama's own `GET /api/tags`, keeping only models confirmed
-    (via `_supports_tools`) to support tool-calling. Falls back to the
-    static `OLLAMA_MODELS` config list (as bare, size-less, unfiltered
-    entries) if the Ollama daemon isn't reachable at all, so the model
-    picker degrades gracefully instead of the whole endpoint erroring out
-    — that fallback can't be capability-checked, so it may include models
-    that don't actually support tools."""
+    (via `_supports_tools`) to support tool-calling. None when the daemon
+    isn't reachable — so callers can tell "nothing installed" from "no
+    Ollama" (onboarding only offers local models when some really exist)."""
     try:
         with httpx.Client(base_url=settings.OLLAMA_BASE_URL, timeout=3.0) as client:
             response = client.get("/api/tags")
@@ -99,10 +107,7 @@ def list_local_ollama_models() -> list[dict]:
                     }
                 )
     except (httpx.HTTPError, ValueError):
-        return [
-            {"id": m, "size_gb": None, "parameter_size": None, "family": None}
-            for m in settings.OLLAMA_MODELS
-        ]
+        return None
     return sorted(models, key=lambda m: m["id"])
 
 
