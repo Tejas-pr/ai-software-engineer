@@ -2,6 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/jetbrains-mono";
+@import "@fontsource/instrument-serif";
+@import "@fontsource/instrument-serif/400-italic.css";
 
 @custom-variant dark (&:is(.dark *));
 @source "../../../../apps/**/*.{ts,tsx}";
@@ -9,126 +11,380 @@
 @source "../**/*.{ts,tsx}";
 
 @theme inline {
-    --font-heading: var(--font-mono);
-    --color-sidebar-ring: var(--sidebar-ring);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar: var(--sidebar);
-    --color-chart-5: var(--chart-5);
-    --color-chart-4: var(--chart-4);
-    --color-chart-3: var(--chart-3);
-    --color-chart-2: var(--chart-2);
-    --color-chart-1: var(--chart-1);
-    --color-ring: var(--ring);
-    --color-input: var(--input);
-    --color-border: var(--border);
-    --color-destructive: var(--destructive);
-    --color-accent-foreground: var(--accent-foreground);
-    --color-accent: var(--accent);
-    --color-muted-foreground: var(--muted-foreground);
-    --color-muted: var(--muted);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-secondary: var(--secondary);
-    --color-primary-foreground: var(--primary-foreground);
-    --color-primary: var(--primary);
-    --color-popover-foreground: var(--popover-foreground);
-    --color-popover: var(--popover);
-    --color-card-foreground: var(--card-foreground);
-    --color-card: var(--card);
-    --color-foreground: var(--foreground);
-    --color-background: var(--background);
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
-    --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
-    --font-mono: 'JetBrains Mono Variable', monospace;
-    --font-sans: 'JetBrains Mono Variable', monospace;
+  --color-link: var(--link);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
+  --color-glass-scrim: var(--glass-scrim);
+  --color-glass-selected: var(--glass-selected);
+  --color-glass-selected-foreground: var(--glass-selected-foreground);
+  --color-cta-from: var(--cta-from);
+  --color-cta-to: var(--cta-to);
+  /* Agent run states: one tone each, used by badges and the run preview */
+  --color-run-pending: var(--run-pending);
+  --color-run-running: var(--run-running);
+  --color-run-awaiting: var(--run-awaiting);
+  --color-run-completed: var(--run-completed);
+  --color-run-failed: var(--run-failed);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-xs: 4px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+  --radius-4xl: 32px;
+  --font-sans: "JetBrains Mono Variable", ui-monospace, monospace;
+  --font-heading: var(--font-sans);
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+  /* Display headings: page titles, section titles, hero */
+  --font-serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
 }
 
+@theme {
+  /* Below text-xs (12px) */
+  --text-2xs: 0.6875rem;
+  --text-3xs: 0.625rem;
+  --animate-progress-indeterminate: progress-indeterminate 1.2s ease-in-out
+    infinite;
+  --animate-caret: caret-blink 1.1s steps(1, end) infinite;
+  /* Glass surfaces: a soft spring in with a clearing blur, a quick fade out.
+     Reduced motion swaps them for plain fades (below the tokens) */
+  --animate-glass-in: glass-in 320ms cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-glass-out: glass-out 160ms ease-in forwards;
+
+  @keyframes progress-indeterminate {
+    from {
+      translate: -100% 0;
+    }
+
+    to {
+      translate: 300% 0;
+    }
+  }
+
+  @keyframes caret-blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0;
+    }
+  }
+}
+
+/*
+ * Brand palette. Change brand colors HERE only: the semantic tokens below
+ * (--primary, --link, …) point at these, and components use only the
+ * semantic tokens (bg-primary, text-link, …).
+ */
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.153 0.006 107.1);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.153 0.006 107.1);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.153 0.006 107.1);
-    --primary: oklch(0.852 0.199 91.936);
-    --primary-foreground: oklch(0.421 0.095 57.708);
-    --secondary: oklch(0.967 0.001 286.375);
-    --secondary-foreground: oklch(0.21 0.006 285.885);
-    --muted: oklch(0.966 0.005 106.5);
-    --muted-foreground: oklch(0.58 0.031 107.3);
-    --accent: oklch(0.966 0.005 106.5);
-    --accent-foreground: oklch(0.228 0.013 107.4);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.93 0.007 106.5);
-    --input: oklch(0.93 0.007 106.5);
-    --ring: oklch(0.737 0.021 106.9);
-    --chart-1: oklch(0.809 0.105 251.813);
-    --chart-2: oklch(0.623 0.214 259.815);
-    --chart-3: oklch(0.546 0.245 262.881);
-    --chart-4: oklch(0.488 0.243 264.376);
-    --chart-5: oklch(0.424 0.199 265.638);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.988 0.003 106.5);
-    --sidebar-foreground: oklch(0.153 0.006 107.1);
-    --sidebar-primary: oklch(0.681 0.162 75.834);
-    --sidebar-primary-foreground: oklch(0.987 0.026 102.212);
-    --sidebar-accent: oklch(0.966 0.005 106.5);
-    --sidebar-accent-foreground: oklch(0.228 0.013 107.4);
-    --sidebar-border: oklch(0.93 0.007 106.5);
-    --sidebar-ring: oklch(0.737 0.021 106.9);
+  /* Amber: the caret, the primary action, focus rings */
+  --brand-amber: oklch(0.84 0.17 84);
+  --brand-amber-deep: oklch(0.62 0.15 62);
+  --brand-amber-ink: oklch(0.29 0.07 58);
+  /* Warm paper and ink, never pure white or black */
+  --brand-paper: oklch(0.984 0.005 85);
+  --brand-paper-raised: oklch(0.996 0.002 85);
+  --brand-ink: oklch(0.205 0.012 65);
+  --brand-charcoal: oklch(0.165 0.006 70);
+  --brand-charcoal-raised: oklch(0.2 0.007 70);
+}
+
+:root,
+.light {
+  color-scheme: light;
+  --brand: var(--brand-amber);
+  --brand-foreground: var(--brand-amber-ink);
+  --brand-soft: oklch(0.95 0.06 88);
+  --ink: var(--brand-ink);
+  --paper: var(--brand-paper);
+  --background: var(--brand-paper);
+  --foreground: var(--brand-ink);
+  --card: var(--brand-paper-raised);
+  --card-foreground: var(--brand-ink);
+  --popover: var(--brand-paper-raised);
+  --popover-foreground: var(--brand-ink);
+  --primary: var(--brand-amber);
+  --primary-foreground: var(--brand-amber-ink);
+  --secondary: oklch(0.955 0.006 85);
+  --secondary-foreground: var(--brand-ink);
+  --muted: oklch(0.955 0.006 85);
+  --muted-foreground: oklch(0.5 0.016 70);
+  --accent: oklch(0.945 0.012 85);
+  --accent-foreground: var(--brand-ink);
+  --destructive: oklch(0.56 0.2 28);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.905 0.009 85);
+  --input: oklch(0.88 0.01 85);
+  --ring: var(--brand-amber-deep);
+  --link: var(--brand-amber-deep);
+  /* Ink solid: the quiet, confident action next to an amber one */
+  --highlight: var(--brand-ink);
+  --highlight-foreground: var(--brand-paper);
+  --cta-from: oklch(0.86 0.16 92);
+  --cta-to: oklch(0.76 0.17 62);
+  --run-pending: oklch(0.55 0.02 70);
+  --run-running: oklch(0.55 0.15 250);
+  --run-awaiting: oklch(0.62 0.15 62);
+  --run-completed: oklch(0.55 0.13 150);
+  --run-failed: oklch(0.56 0.2 28);
+  /* Frosted glass (header on scroll, popovers): see the glass utility */
+  --glass: oklch(0.996 0.002 85 / 72%);
+  --glass-border: oklch(0.205 0.012 65 / 8%);
+  --glass-edge: oklch(0 0 0 / 4%);
+  --glass-highlight: oklch(1 0 0 / 90%);
+  --glass-sheen: oklch(1 0 0 / 35%);
+  --glass-shadow: oklch(0.3 0.03 60 / 16%);
+  --glass-brightness: 1.04;
+  --glass-scrim: oklch(0.2 0.01 65 / 18%);
+  --glass-selected: var(--accent);
+  --glass-selected-foreground: var(--accent-foreground);
+  --chart-1: oklch(0.84 0.17 84);
+  --chart-2: oklch(0.62 0.15 62);
+  --chart-3: oklch(0.55 0.15 250);
+  --chart-4: oklch(0.55 0.13 150);
+  --chart-5: oklch(0.5 0.016 70);
+  --radius: 8px;
+  --sidebar: var(--brand-paper);
+  --sidebar-foreground: var(--brand-ink);
+  --sidebar-primary: var(--brand-amber);
+  --sidebar-primary-foreground: var(--brand-amber-ink);
+  --sidebar-accent: oklch(0.945 0.012 85);
+  --sidebar-accent-foreground: var(--brand-ink);
+  --sidebar-border: oklch(0.905 0.009 85);
+  --sidebar-ring: var(--brand-amber-deep);
 }
 
 .dark {
-    --background: oklch(0.153 0.006 107.1);
-    --foreground: oklch(0.988 0.003 106.5);
-    --card: oklch(0.228 0.013 107.4);
-    --card-foreground: oklch(0.988 0.003 106.5);
-    --popover: oklch(0.228 0.013 107.4);
-    --popover-foreground: oklch(0.988 0.003 106.5);
-    --primary: oklch(0.795 0.184 86.047);
-    --primary-foreground: oklch(0.421 0.095 57.708);
-    --secondary: oklch(0.274 0.006 286.033);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.286 0.016 107.4);
-    --muted-foreground: oklch(0.737 0.021 106.9);
-    --accent: oklch(0.286 0.016 107.4);
-    --accent-foreground: oklch(0.988 0.003 106.5);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.58 0.031 107.3);
-    --chart-1: oklch(0.809 0.105 251.813);
-    --chart-2: oklch(0.623 0.214 259.815);
-    --chart-3: oklch(0.546 0.245 262.881);
-    --chart-4: oklch(0.488 0.243 264.376);
-    --chart-5: oklch(0.424 0.199 265.638);
-    --sidebar: oklch(0.228 0.013 107.4);
-    --sidebar-foreground: oklch(0.988 0.003 106.5);
-    --sidebar-primary: oklch(0.795 0.184 86.047);
-    --sidebar-primary-foreground: oklch(0.987 0.026 102.212);
-    --sidebar-accent: oklch(0.286 0.016 107.4);
-    --sidebar-accent-foreground: oklch(0.988 0.003 106.5);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.58 0.031 107.3);
+  color-scheme: dark;
+  --brand-soft: oklch(0.3 0.06 75);
+  --ink: var(--brand-paper);
+  --paper: var(--brand-charcoal);
+  --background: var(--brand-charcoal);
+  --foreground: oklch(0.95 0.007 85);
+  --card: var(--brand-charcoal-raised);
+  --card-foreground: oklch(0.95 0.007 85);
+  --popover: oklch(0.215 0.008 70);
+  --popover-foreground: oklch(0.95 0.007 85);
+  --primary: var(--brand-amber);
+  --primary-foreground: var(--brand-amber-ink);
+  --secondary: oklch(0.25 0.008 70);
+  --secondary-foreground: oklch(0.95 0.007 85);
+  --muted: oklch(0.24 0.008 70);
+  --muted-foreground: oklch(0.7 0.012 80);
+  --accent: oklch(0.26 0.01 70);
+  --accent-foreground: oklch(0.95 0.007 85);
+  --destructive: oklch(0.7 0.17 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: var(--brand-amber);
+  --link: var(--brand-amber);
+  --highlight: oklch(0.95 0.007 85);
+  --highlight-foreground: var(--brand-charcoal);
+  --run-pending: oklch(0.72 0.015 80);
+  --run-running: oklch(0.75 0.12 245);
+  --run-awaiting: oklch(0.82 0.15 80);
+  --run-completed: oklch(0.76 0.14 150);
+  --run-failed: oklch(0.7 0.17 25);
+  --glass: oklch(0.2 0.007 70 / 72%);
+  --glass-border: oklch(1 0 0 / 8%);
+  --glass-edge: oklch(0 0 0 / 40%);
+  --glass-highlight: oklch(1 0 0 / 6%);
+  --glass-sheen: oklch(1 0 0 / 3%);
+  --glass-shadow: oklch(0 0 0 / 55%);
+  --glass-brightness: 1;
+  --glass-scrim: oklch(0 0 0 / 45%);
+  --sidebar: var(--brand-charcoal);
+  --sidebar-foreground: oklch(0.95 0.007 85);
+  --sidebar-accent: oklch(0.26 0.01 70);
+  --sidebar-accent-foreground: oklch(0.95 0.007 85);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: var(--brand-amber);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+  }
+
+  html {
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     @apply bg-background text-foreground;
-    }
-  button:not(:disabled), [role="button"]:not(:disabled) {
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--brand-amber) 45%, transparent);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
     cursor: pointer;
-    }
+  }
+
+  /* Default icon sizing inside buttons and interactive controls (16px) */
+  button svg:not([class*="size-"]):not([class*="w-"]):not([class*="h-"]),
+  [role="button"]
+    svg:not([class*="size-"]):not([class*="w-"]):not([class*="h-"]) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* Thin scrollbars everywhere */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0 0 0 / 22%) transparent;
+  }
+
+  .dark * {
+    scrollbar-color: oklch(1 0 0 / 22%) transparent;
+  }
+}
+
+/* Faint engineering-paper grid, faded out at the edges. Put it on an
+   absolutely positioned layer behind content */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(
+    ellipse 70% 60% at 50% 0%,
+    black 30%,
+    transparent 75%
+  );
+}
+
+/* Paper grain: a tiny inline noise tile, so flat fills don't look printed
+   by a machine */
+@utility bg-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Frosted glass: blurs and brightens what's behind it, with a lit top edge.
+   Falls back to the solid popover color without backdrop-filter or with
+   reduced transparency */
+@utility glass {
+  background-color: var(--glass);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-highlight),
+    0 0 0 1px var(--glass-edge),
+    0 24px 60px -16px var(--glass-shadow),
+    0 8px 20px -8px var(--glass-shadow);
+  -webkit-backdrop-filter: blur(20px) saturate(180%)
+    brightness(var(--glass-brightness));
+  backdrop-filter: blur(20px) saturate(180%) brightness(var(--glass-brightness));
+
+  @supports not (backdrop-filter: blur(1px)) {
+    background-color: var(--popover);
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: var(--popover);
+  }
+}
+
+@keyframes glass-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+    filter: blur(8px);
+  }
+}
+
+@keyframes glass-out {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+    filter: blur(4px);
+  }
+}
+
+@keyframes glass-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes glass-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animate-glass-in: glass-fade-in 150ms ease-out;
+    --animate-glass-out: glass-fade-out 120ms ease-in forwards;
+    --animate-caret: none;
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+
+  &::-webkit-scrollbar {
+    display: none !important;
+  }
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+/* The theme switch animates its view transition from JS (ThemeProvider);
+   turn off the browser's default cross-fade for it */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
