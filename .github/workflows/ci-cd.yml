@@ -1,0 +1,100 @@
+name: CI / CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - development
+  pull_request:
+    branches:
+      - main
+      - development
+
+jobs:
+  verify:
+    name: Lint, Typecheck & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install Node/Bun dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Web Lint & Typecheck
+        run: |
+          bun run lint
+          bun run typecheck
+
+      - name: Web Tests & Build
+        run: |
+          bun run build
+          bun --filter web test
+
+      - name: Python API Lint & Typecheck
+        run: |
+          cd apps/api
+          uv sync --dev
+          uv run ruff check .
+          uv run mypy .
+
+  deploy-backend:
+    name: Deploy Backend to Oracle VM
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH to Oracle Cloud
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          port: ${{ secrets.ORACLE_SSH_PORT || 22 }}
+          script: |
+            set -e
+            echo "==> Deploying AI Software Engineer API on Oracle VM..."
+            
+            APP_DIR="${HOME}/ai-software-engineer"
+            
+            if [ ! -d "$APP_DIR" ]; then
+              echo "==> Cloning repository..."
+              git clone https://github.com/Tejas-pr/ai-software-engineer.git "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+            git fetch origin main
+            git checkout main
+            git pull origin main
+
+            # Ensure uv is installed
+            if ! command -v uv &> /dev/null; then
+              export PATH="$HOME/.local/bin:$PATH"
+              if ! command -v uv &> /dev/null; then
+                curl -LsSf https://astral.sh/uv/install.sh | sh
+                export PATH="$HOME/.local/bin:$PATH"
+              fi
+            fi
+
+            cd "$APP_DIR/apps/api"
+            ~/.local/bin/uv sync
+
+            # Run database migrations against Neon PostgreSQL
+            if [ -f ".env" ]; then
+              ~/.local/bin/uv run alembic upgrade head
+            fi
+
+            # Reload API service with PM2
+            pm2 reload ai-engineer-api || pm2 start ecosystem.config.cjs --name ai-engineer-api
+            echo "==> Backend deploy completed successfully!"
+
