@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -18,6 +18,9 @@ router = APIRouter(prefix="/accounts/auth", tags=["auth"])
 # Only send the cookie over HTTPS once we're actually deployed behind one.
 COOKIE_SECURE = settings.ENVIRONMENT.lower() == "production"
 AUTH_PATH = "/api/v1/accounts/auth"
+
+
+COOKIE_SAMESITE: Literal["none", "lax"] = "none" if COOKIE_SECURE else "lax"
 
 
 class UserPublic(SQLModel):
@@ -42,7 +45,7 @@ def _set_auth_cookies(response: Response, user: User) -> None:
         access_token,
         httponly=True,
         secure=COOKIE_SECURE,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
@@ -52,7 +55,7 @@ def _set_auth_cookies(response: Response, user: User) -> None:
         refresh_token,
         httponly=True,
         secure=COOKIE_SECURE,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         path=AUTH_PATH,
     )
@@ -180,8 +183,18 @@ def refresh(
 
 @router.post("/logout/")
 def logout(response: Response):
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path=AUTH_PATH)
+    response.delete_cookie(
+        "access_token",
+        path="/",
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+    )
+    response.delete_cookie(
+        "refresh_token",
+        path=AUTH_PATH,
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+    )
     return {"status": "ok"}
 
 

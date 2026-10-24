@@ -34,7 +34,7 @@ providers/
   theme/                 light/dark/system, caret switch animation
   organization/          the user's organizations + the selected one
 hooks/
-  auth/use-auth.ts  common/use-theme.ts  common/use-debounce.ts
+  auth/use-auth.ts  common/use-theme.ts  common/use-debounce.ts  common/use-system-config.ts
   organization/use-organization.ts
   organization/use-org-data.ts   useOrgProjects / useOrgRuns + ORG_DATA_CHANGED_EVENT
 layouts/                 root, public, auth, onboarding, app (sidebar shell)
@@ -45,7 +45,7 @@ components/
     common/              page-header, view-toggle, code-block, theme-toggle,
                          user-menu (public header), nav-user (sidebar),
                          brand-link, github-auth-button, section-heading,
-                         route-transition, navigation-progress
+                         route-transition, navigation-progress, demo-restriction-toast
     organization/        org-switcher, create-organization-popup
     onboarding/          onboarding-stepper
     auth/ skeletons/

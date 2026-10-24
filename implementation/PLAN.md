@@ -100,6 +100,22 @@ Attribution, docs, cleanup
       HTTPS, unbuffered SSE stream forwarding (`flush_interval -1`) for
       `/api/*` and SPA routing for frontend.
 
+### Round 4 — Deployment, CI/CD & Demo Safeguards
+
+- [x] Oracle Cloud VM & Neon.tech backend provisioning:
+      Configured PM2 ecosystem (`ecosystem.config.cjs`) with `uv run uvicorn`,
+      automated migration runner and provisioning shell script (`scripts/deploy-oracle.sh`),
+      Nginx reverse proxy with SSE unbuffered streaming config (`scripts/nginx-ai-api.conf`),
+      and GitHub Actions CI/CD workflow (`.github/workflows/ci-cd.yml`) with automated SSH deployment on push to `main`.
+- [x] Cloudflare Pages deployment readiness:
+      Added `apps/web/public/_redirects` for SPA history routing (`/* /index.html 200`),
+      production cross-origin CORS & authentication cookie handling (`SameSite=None; Secure`).
+- [x] Demo safety restrictions (`RESTRICT_CLONE_RUN_PROJECT`):
+      Low-resource instance safeguard preventing OOM / crash from git clone and agent loops.
+      Backend returns 403 Forbidden on project connection and agent run/retry/approval.
+      Frontend displays always-on bottom-left notice (`DemoRestrictionToast`) with toggle and links to GitHub walkthrough & self-host setup,
+      plus proactive warning toasts in Task Launcher, connect repository, and onboarding.
+
 ## Next
 
 Product

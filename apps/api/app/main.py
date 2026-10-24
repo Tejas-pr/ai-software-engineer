@@ -63,11 +63,11 @@ async def built_by_header(request: Request, call_next):
     return response
 
 
+frontend_origins = [o.strip() for o in settings.FRONTEND_URL.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.FRONTEND_URL,
-    ],
+    allow_origins=frontend_origins,
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods (GET, POST, PUT, DELETE, etc.)
     allow_headers=["*"],  # Allows all headers

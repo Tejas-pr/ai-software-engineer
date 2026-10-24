@@ -4,6 +4,7 @@ import redis
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, text
 
+from app.config import settings
 from app.db import get_session
 from app.redis_client import get_redis
 
@@ -12,6 +13,15 @@ router = APIRouter(tags=["system"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 RedisDep = Annotated[redis.Redis, Depends(get_redis)]
+
+
+@router.get("/config")
+def get_system_config():
+    """Returns system mode flags (such as low-resource demo restriction)."""
+    return {
+        "restrict_clone_run_project": settings.RESTRICT_CLONE_RUN_PROJECT,
+        "environment": settings.ENVIRONMENT,
+    }
 
 
 @router.get("/db-test")

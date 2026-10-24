@@ -4,3 +4,4 @@
 4. Need a chat bot where I can tell things that it can do (if I say 'check my demmy repo and fix the issues from it" it should go and check it and fix)
 5. need refrsh and session tokens, since after somedays it is expliring the github issue section not redering since the token is expired so.. it is showing error ... we need to tell re-auth ..
 6. Need proper error handling and message need to show to the user.
+7. delete the project option.

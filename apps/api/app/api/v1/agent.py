@@ -116,6 +116,14 @@ def create_run(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Session = Depends(get_session),
 ):
+    if settings.RESTRICT_CLONE_RUN_PROJECT:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Agent execution is restricted on this demo instance to prevent resource exhaustion. "
+                "Please clone the project to run locally or check the GitHub video walkthrough."
+            ),
+        )
     project = get_accessible_project(session, body.project_id, current_user)
     if project.status != "ready":
         raise HTTPException(
@@ -487,6 +495,14 @@ async def approve_run(
 ):
     """Resumes a run paused at `human_approval`. Another SSE stream, same
     event shape as GET /stream, covering execution from here to the end."""
+    if settings.RESTRICT_CLONE_RUN_PROJECT:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Agent execution is restricted on this demo instance to prevent resource exhaustion. "
+                "Please clone the project to run locally or check the GitHub video walkthrough."
+            ),
+        )
     run = _get_owned_run(run_id, current_user, session)
     if run.status != "awaiting_approval":
         raise HTTPException(
@@ -517,6 +533,14 @@ async def retry_run(
     Deliberately does NOT reset the workspace (unlike a fresh /stream) —
     the whole point is to keep whatever the coder already built and
     committed, not throw it away."""
+    if settings.RESTRICT_CLONE_RUN_PROJECT:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Agent execution is restricted on this demo instance to prevent resource exhaustion. "
+                "Please clone the project to run locally or check the GitHub video walkthrough."
+            ),
+        )
     run = _get_owned_run(run_id, current_user, session)
     if run.status != "failed":
         raise HTTPException(

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Lock, Search } from "lucide-react"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Spinner } from "@workspace/ui/components/spinner"
+import { toast } from "@workspace/ui/components/toast"
 import {
   connectProject,
   listGithubRepos,
@@ -11,6 +12,7 @@ import {
 import { ApplicationButton } from "@/components/molecules/application/application-button"
 import { ApplicationInput } from "@/components/molecules/application/application-input"
 import { ApplicationPopup } from "@/components/molecules/application/application-popup"
+import { useSystemConfig } from "@/hooks/common/use-system-config"
 import { describeError } from "@/lib/common/api-error"
 
 /** Pick one of your GitHub repositories to connect to the organization */
@@ -31,6 +33,7 @@ export function ConnectRepositoryPopup({
   const [query, setQuery] = useState("")
   const [busyUrl, setBusyUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { isRestricted } = useSystemConfig()
 
   useEffect(() => {
     if (!isOpen || repos !== null) return
@@ -53,6 +56,15 @@ export function ConnectRepositoryPopup({
   )
 
   async function handleConnect(repo: GithubRepo) {
+    if (isRestricted) {
+      toast.add({
+        title: "Demo Mode Restricted",
+        description:
+          "Cloning repositories is disabled on this low-resource demo instance. Please clone the project to run locally or check the GitHub video walkthrough.",
+        type: "warning",
+      })
+      return
+    }
     setBusyUrl(repo.url)
     setError(null)
     try {

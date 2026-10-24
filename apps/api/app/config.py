@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     REDIS_DB: int = 0
     FRONTEND_URL: str = "http://localhost:5173"
 
+    # Restriction flag for low-resource demo instances (prevents OOM crashes from git clone / agent runs)
+    RESTRICT_CLONE_RUN_PROJECT: bool = False
+
     # Add the Auth settings
     JWT_SECRET: str = "your_super_secret_jwt_key_here"
     JWT_ALGORITHM: str = "HS256"
@@ -81,9 +84,12 @@ class Settings(BaseSettings):
                 raise ValueError(
                     f"GITHUB_REDIRECT_URI cannot point to localhost/127.0.0.1 in production: {self.GITHUB_REDIRECT_URI}"
                 )
-            if "localhost" in self.FRONTEND_URL or "127.0.0.1" in self.FRONTEND_URL:
+            origins = [u.strip() for u in self.FRONTEND_URL.split(",") if u.strip()]
+            if not origins or all(
+                "localhost" in u or "127.0.0.1" in u for u in origins
+            ):
                 raise ValueError(
-                    f"FRONTEND_URL cannot point to localhost/127.0.0.1 in production: {self.FRONTEND_URL}"
+                    f"FRONTEND_URL must contain at least one production domain in production: {self.FRONTEND_URL}"
                 )
             if self.JWT_SECRET == "your_super_secret_jwt_key_here":
                 raise ValueError("JWT_SECRET must be changed in production!")

@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
     `${BASE}/orgs/${id}/members/${userId}`,
   GITHUB_REPOS: `${BASE}/github/repos`,
   SETTINGS: `${BASE}/settings`,
+  SYSTEM_CONFIG: `${BASE}/config`,
   PROJECTS: `${BASE}/projects/`,
   PROJECT: (id: number) => `${BASE}/projects/${id}`,
   PROJECT_ISSUES: (id: number) => `${BASE}/projects/${id}/issues`,

@@ -9,7 +9,7 @@ routes live under `/api/v1` except `GET /health`.
 |------|----------------|
 | `app/main.py` | Builds the app: Redis pool in `lifespan`, global `RateLimiter(300, 60)` dependency, CORS for `settings.FRONTEND_URL` only (credentials on), an `X-Built-By` header on every response, mounts every v1 router, `GET /health` (DB + Redis). |
 | `app/attribution.py` | Author, author URL and repository URL — used by the API docs and the `X-Built-By` header (mirrored by the web app's `lib/common/attribution.ts`). |
-| `app/config.py` | `Settings` (pydantic-settings, reads `apps/api/.env`, ignores unknown keys). Production validator rejects localhost URLs, the default `JWT_SECRET`, and a missing `TOKEN_ENCRYPTION_KEY`. |
+| `app/config.py` | `Settings` (pydantic-settings, reads `apps/api/.env`, ignores unknown keys). Supports `RESTRICT_CLONE_RUN_PROJECT: bool` (guards repo clones and agent runs on low-resource demo instances) and comma-separated `FRONTEND_URL` origins. Production validator rejects localhost URLs, the default `JWT_SECRET`, and a missing `TOKEN_ENCRYPTION_KEY`. |
 | `app/db.py` | Module-level `engine` (`echo=True` — every SQL statement is logged) and the `get_session` dependency. |
 | `app/redis_client.py` | `get_redis` dependency over `app.state.redis_pool`. Needs a `Request`, so worker threads build their own client (`_sync_redis()` in `agent.py`). |
 | `app/rate_limiter.py` | Fixed-window limiter: `INCR rate_limit:<ip>`, expire on first hit, 429 with `retry_after_seconds` past the limit. |
@@ -129,7 +129,8 @@ Access is through the project's organization (`get_accessible_project`).
 ### Other
 
 `GET /github/repos` → `[{name (owner/repo), url, private, default_branch,
-description}]`. `POST /chat/` and `POST /chat/stream` → dev console.
+description}]`. `GET /config` (public) → `{restrict_clone_run_project: bool,
+environment: str}`. `POST /chat/` and `POST /chat/stream` → dev console.
 `GET /db-test`, `GET /redis-test`, `GET /health`.
 
 ## The agent graph (`app/agents/graph.py`)

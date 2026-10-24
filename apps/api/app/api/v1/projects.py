@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session, col, select
 
 from app.api.deps import get_current_user, get_github_token
+from app.config import settings
 from app.db import get_session
 from app.models.project import Project
 from app.models.user import User
@@ -92,6 +93,14 @@ def create_project(
     a previously-failed clone (e.g. the repo was empty and has since had a
     commit pushed to it) just re-clones onto the same row.
     """
+    if settings.RESTRICT_CLONE_RUN_PROJECT:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Repository cloning is restricted on this demo instance to prevent resource exhaustion. "
+                "Please clone the project to run locally or check the GitHub video walkthrough."
+            ),
+        )
     assert current_user.id is not None  # authenticated users are always persisted
     require_membership(session, body.organization_id, current_user)
     owner, repo = parse_github_url(body.github_url)

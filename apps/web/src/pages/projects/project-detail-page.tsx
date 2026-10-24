@@ -23,7 +23,9 @@ import {
 } from "lucide-react"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Kbd } from "@workspace/ui/components/kbd"
+import { toast } from "@workspace/ui/components/toast"
 import { cn } from "@workspace/ui/lib/utils"
+import { useSystemConfig } from "@/hooks/common/use-system-config"
 import {
   approveRun,
   cancelRun,
@@ -195,6 +197,7 @@ export function ProjectDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedRunId = Number(searchParams.get("run")) || null
   const attachedRunId = useRef<number | null>(null)
+  const { isRestricted } = useSystemConfig()
 
   const [project, setProject] = useState<Project | null>(null)
   const [projectLoading, setProjectLoading] = useState(true)
@@ -452,6 +455,15 @@ export function ProjectDetailPage() {
   }, [id, requestedRunId])
 
   const handleStartRun = async () => {
+    if (isRestricted) {
+      toast.add({
+        title: "Demo Mode Restricted",
+        description:
+          "Agent execution is disabled on this low-resource demo instance. Please clone the project to run locally or check the GitHub video walkthrough.",
+        type: "warning",
+      })
+      return
+    }
     if (!project || !task.trim()) return
     setNodeStates(initialNodeStates())
     setPendingPlan(null)
@@ -475,6 +487,15 @@ export function ProjectDetailPage() {
   }
 
   const handleApproval = async (approved: boolean) => {
+    if (isRestricted) {
+      toast.add({
+        title: "Demo Mode Restricted",
+        description:
+          "Agent execution is disabled on this low-resource demo instance. Please clone the project to run locally or check the GitHub video walkthrough.",
+        type: "warning",
+      })
+      return
+    }
     if (!run) return
     setPendingPlan(null)
     setRun({ ...run, status: "running" })
@@ -488,6 +509,15 @@ export function ProjectDetailPage() {
   }
 
   const handleRetryRun = async () => {
+    if (isRestricted) {
+      toast.add({
+        title: "Demo Mode Restricted",
+        description:
+          "Agent execution is disabled on this low-resource demo instance. Please clone the project to run locally or check the GitHub video walkthrough.",
+        type: "warning",
+      })
+      return
+    }
     if (!run || run.status !== "failed") return
     setRetryingRun(true)
     setRun({ ...run, status: "running", error: null })
