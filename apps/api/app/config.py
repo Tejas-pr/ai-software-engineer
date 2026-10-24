@@ -76,6 +76,13 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_config(self) -> "Settings":
+        # Normalize postgres driver scheme to psycopg v3 so standard Neon / Supabase URLs work out of the box
+        url = self.DATABASE_URL.strip()
+        if url.startswith("postgres://"):
+            self.DATABASE_URL = "postgresql+psycopg://" + url[len("postgres://"):]
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
+            self.DATABASE_URL = "postgresql+psycopg://" + url[len("postgresql://"):]
+
         if self.ENVIRONMENT.lower() == "production":
             if (
                 "localhost" in self.GITHUB_REDIRECT_URI

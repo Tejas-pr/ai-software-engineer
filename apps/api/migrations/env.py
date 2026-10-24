@@ -11,7 +11,12 @@ from alembic import context
 # this is the Alembic Config object, which provides access to the values within the .ini file in use.
 config = context.config
 # 2. Dynamically set the database URL from settings.DATABASE_URL
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+db_url = settings.DATABASE_URL.strip()
+if db_url.startswith("postgres://"):
+    db_url = "postgresql+psycopg://" + db_url[len("postgres://"):]
+elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+"):
+    db_url = "postgresql+psycopg://" + db_url[len("postgresql://"):]
+config.set_main_option("sqlalchemy.url", db_url)
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
