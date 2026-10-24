@@ -183,7 +183,10 @@ semantic tokens.
   `run-completed`, `run-failed` (e.g. `text-run-failed`, `bg-run-completed/10`).
 - **Utilities:** `bg-grid` (faded engineering-paper grid), `bg-grain`
   (noise), `glass`, `animate-caret` (terminal-caret blink), `text-2xs`,
-  `text-3xs`, `no-scrollbar`. `cn()` knows `text-2xs`/`text-3xs` are sizes.
+  `text-3xs`, `no-scrollbar`, `scrollbar-thin`. Global thin 6px pill
+  scrollbars (`*`, `*::-webkit-scrollbar`) with transparent tracks and
+  theme-matched thumb tones (`oklch(0 0 0 / 22%)` light, `oklch(1 0 0 / 25%)`
+  dark, deepening to 45% on hover). `cn()` knows `text-2xs`/`text-3xs` are sizes.
 - **Forcing a theme on a section:** add `dark` or `light` to a wrapper (the
   auth showcase and the landing CTA are always ink with `dark`).
 - **ThemeProvider:** `theme` (`light` | `dark` | `system`, stored in

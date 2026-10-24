@@ -27,16 +27,13 @@ const SIDEBAR_SIZE = { "--sidebar-width": "21rem" } as React.CSSProperties
 
 function AppShell({ user }: { user: User }) {
   const [searchOpen, setSearchOpen] = useState(false)
-  const [hasOpenedSearch, setHasOpenedSearch] = useState(false)
   const { toggleSidebar } = useSidebar()
 
   const handleOpenSearch = useCallback(() => {
-    setHasOpenedSearch(true)
     setSearchOpen(true)
   }, [])
 
   const handleToggleSearch = useCallback(() => {
-    setHasOpenedSearch(true)
     setSearchOpen((prev) => !prev)
   }, [])
 
@@ -53,14 +50,14 @@ function AppShell({ user }: { user: User }) {
   return (
     <>
       <AppSidebar user={user} />
-      <SidebarInset className="min-w-0">
+      <SidebarInset className="h-svh min-w-0 overflow-x-hidden overflow-y-auto">
         <AppTopbar onOpenSearch={handleOpenSearch} />
         <RouteTransition className="flex flex-1 flex-col">
           <Outlet />
         </RouteTransition>
       </SidebarInset>
       <Suspense fallback={null}>
-        {hasOpenedSearch && (
+        {searchOpen && (
           <AppSearchDialog
             open={searchOpen}
             onOpenChange={setSearchOpen}
@@ -101,7 +98,7 @@ export function AppLayout() {
   return (
     <OrganizationProvider>
       <TooltipProvider>
-        <SidebarProvider style={SIDEBAR_SIZE}>
+        <SidebarProvider style={SIDEBAR_SIZE} className="h-svh overflow-hidden">
           <AppShell user={user} />
         </SidebarProvider>
       </TooltipProvider>

@@ -644,7 +644,7 @@ export function ApplicationTable<T extends Record<string, unknown>>({
           !isBorderless && "rounded-xl border border-border bg-card shadow-xs"
         )}
       >
-        <div className="w-full scrollbar-thin overflow-x-auto">
+        <div className="scrollbar-thin w-full overflow-x-auto">
           <Table
             className={cn(
               "w-full caption-bottom text-xs select-text",

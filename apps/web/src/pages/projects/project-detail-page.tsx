@@ -693,7 +693,7 @@ export function ProjectDetailPage() {
       {project.status === "ready" && (
         <div className="grid gap-6 lg:grid-cols-12">
           {/* LEFT COLUMN: Mission Control & Task Launcher */}
-          <div className="space-y-6 lg:col-span-5 xl:col-span-4">
+          <div className="space-y-6 self-start lg:sticky lg:top-4 lg:col-span-5 xl:col-span-4">
             <ApplicationCard className="space-y-5 p-5">
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <div className="flex items-center gap-2">
@@ -1318,7 +1318,7 @@ export function ProjectDetailPage() {
                   </ApplicationButton>
                 </div>
 
-                <div className="no-scrollbar max-h-96 min-h-64 space-y-2 overflow-y-auto bg-card p-4 font-mono text-xs">
+                <div className="scrollbar-thin max-h-96 min-h-64 space-y-2 overflow-y-auto bg-card p-4 font-mono text-xs">
                   {logs.length === 0 ? (
                     <p className="text-2xs text-muted-foreground">
                       No agent stream messages recorded yet. Start a run or

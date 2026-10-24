@@ -154,7 +154,7 @@ export function ApplicationPopup({
             className={cn(
               // Compact like the app's cards: 16px / 20px padding, 16px
               // between header, body and footer
-              "relative z-10 flex max-h-[calc(100svh-2rem)] w-full scrollbar-thin flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-card p-4 text-card-foreground shadow-lg sm:p-5",
+              "relative z-10 scrollbar-thin flex max-h-[calc(100svh-2rem)] w-full flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-card p-4 text-card-foreground shadow-lg sm:p-5",
               sizeClasses[size],
               className
             )}
