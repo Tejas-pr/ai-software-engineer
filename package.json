@@ -1,6 +1,11 @@
 {
   "name": "ai-software-engineer",
   "version": "0.0.1",
+  "author": "Tejas-pr (https://github.com/Tejas-pr)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tejas-pr/ai-software-engineer"
+  },
   "private": true,
   "scripts": {
     "build": "turbo build",

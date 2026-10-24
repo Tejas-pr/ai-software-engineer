@@ -1,12 +1,14 @@
 import { useState } from "react"
+import { NavLink } from "react-router-dom"
 import { useMotionValueEvent, useScroll } from "motion/react"
 import { cn } from "@workspace/ui/lib/utils"
 import { BrandLink } from "@/components/molecules/common/brand-link"
+import { paths } from "@/lib/common/paths"
 
 const NAV = [
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#features", label: "What it does" },
-  { href: "#models", label: "Models" },
+  { to: `${paths.home}#how-it-works`, label: "How it works" },
+  { to: paths.agents, label: "Agents" },
+  { to: paths.setup, label: "Self-host" },
 ]
 
 /**
@@ -16,12 +18,8 @@ const NAV = [
 export function SiteHeader({
   className,
   children,
-  showNav = false,
   ...props
-}: React.ComponentProps<"header"> & {
-  /** The landing's in-page section links */
-  showNav?: boolean
-}) {
+}: React.ComponentProps<"header">) {
   const { scrollY } = useScroll()
   const [scrolled, setScrolled] = useState(false)
   useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 8))
@@ -39,22 +37,26 @@ export function SiteHeader({
     >
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <BrandLink />
-        {showNav && (
-          <nav
-            aria-label="Sections"
-            className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex"
-          >
-            {NAV.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="rounded-md px-3 py-1.5 text-[0.8125rem] font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
-        )}
+        <nav
+          aria-label="Main"
+          className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex"
+        >
+          {NAV.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end
+              className={({ isActive }) =>
+                cn(
+                  "rounded-md px-3 py-1.5 text-[0.8125rem] font-medium transition-colors hover:text-foreground",
+                  isActive ? "text-foreground" : "text-muted-foreground"
+                )
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
         <div className="flex items-center gap-1.5 sm:gap-2">{children}</div>
       </div>
     </header>

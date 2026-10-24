@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from "react-router-dom"
+import { Link, Outlet } from "react-router-dom"
 import { ArrowRight } from "lucide-react"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { applicationButtonVariants } from "@/components/molecules/application/application-button"
@@ -15,11 +15,10 @@ import { paths } from "@/lib/common/paths"
 // header shows the way forward
 export function PublicLayout() {
   const { user, isPending } = useAuth()
-  const isLanding = useLocation().pathname === paths.home
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <SiteHeader showNav={isLanding}>
+      <SiteHeader>
         <ThemeToggle />
         {isPending ? (
           <Skeleton className="h-9 w-32 rounded-lg" />

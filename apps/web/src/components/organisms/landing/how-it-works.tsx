@@ -1,4 +1,5 @@
 import { useRef } from "react"
+import { Link } from "react-router-dom"
 import {
   motion,
   useReducedMotion,
@@ -7,12 +8,14 @@ import {
   useTransform,
 } from "motion/react"
 import {
+  ArrowRight,
   FolderGit2,
   GitPullRequestArrow,
   ListChecks,
   PenLine,
 } from "lucide-react"
 import { SectionHeading } from "@/components/molecules/common/section-heading"
+import { paths } from "@/lib/common/paths"
 
 const STEPS = [
   {
@@ -117,6 +120,14 @@ export function HowItWorks() {
             </motion.li>
           ))}
         </ol>
+
+        <Link
+          to={paths.agents}
+          className="group mt-14 inline-flex items-center gap-2 text-sm font-medium text-link underline-offset-4 hover:underline md:mx-auto md:flex md:w-fit"
+        >
+          Meet the six agents behind each step
+          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+        </Link>
       </div>
     </section>
   )

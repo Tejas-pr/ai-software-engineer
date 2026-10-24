@@ -1,6 +1,7 @@
 {
   "name": "web",
   "version": "0.0.1",
+  "author": "Tejas-pr (https://github.com/Tejas-pr)",
   "type": "module",
   "private": true,
   "scripts": {

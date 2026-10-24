@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom"
 import { ShieldCheck } from "lucide-react"
+import { BuiltBy } from "@/components/atoms/built-by"
 import { BrandLink } from "@/components/molecules/common/brand-link"
 import { RouteTransition } from "@/components/molecules/common/route-transition"
 import { ThemeToggle } from "@/components/molecules/common/theme-toggle"
@@ -23,10 +24,13 @@ export function AuthLayout() {
           </RouteTransition>
         </main>
 
-        <p className="flex items-center gap-2 text-xs text-muted-foreground">
-          <ShieldCheck className="size-3.5" />
-          GitHub OAuth · session kept in httpOnly cookies
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <ShieldCheck className="size-3.5" />
+            GitHub OAuth · session kept in httpOnly cookies
+          </p>
+          <BuiltBy />
+        </div>
       </div>
 
       <div className="sticky top-0 hidden h-svh p-3 lg:block">
