@@ -16,7 +16,7 @@ export function DemoRestrictionToast() {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 max-w-sm sm:max-w-[420px] select-none font-sans">
+    <div className="fixed bottom-4 left-4 z-50 max-w-sm font-sans select-none sm:max-w-[420px]">
       <div className="relative overflow-hidden rounded-xl border border-primary/40 bg-card/95 p-3.5 text-card-foreground shadow-2xl backdrop-blur-md transition-all">
         {/* Header Bar */}
         <div className="flex items-center justify-between gap-2">

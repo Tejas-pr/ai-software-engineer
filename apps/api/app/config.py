@@ -79,9 +79,9 @@ class Settings(BaseSettings):
         # Normalize postgres driver scheme to psycopg v3 so standard Neon / Supabase URLs work out of the box
         url = self.DATABASE_URL.strip()
         if url.startswith("postgres://"):
-            self.DATABASE_URL = "postgresql+psycopg://" + url[len("postgres://"):]
+            self.DATABASE_URL = "postgresql+psycopg://" + url[len("postgres://") :]
         elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
-            self.DATABASE_URL = "postgresql+psycopg://" + url[len("postgresql://"):]
+            self.DATABASE_URL = "postgresql+psycopg://" + url[len("postgresql://") :]
 
         if self.ENVIRONMENT.lower() == "production":
             if (

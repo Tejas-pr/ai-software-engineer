@@ -31,7 +31,8 @@ cd "$APP_DIR"
 echo "🔄 Pulling latest main branch..."
 git fetch origin main
 git checkout main
-git pull origin main
+git reset --hard origin/main
+chmod +x "$APP_DIR/apps/api/start.sh" "$APP_DIR/scripts/deploy-oracle.sh" 2>/dev/null || true
 
 # 3. Install Python 3.13 and dependencies
 cd "$APP_DIR/apps/api"
@@ -62,12 +63,10 @@ fi
 
 # 7. Start or restart backend with PM2
 echo "⚡ Managing process with PM2..."
-if pm2 list | grep -q "ai-engineer-api"; then
-  pm2 restart ai-engineer-api
-else
-  pm2 start "$APP_DIR/apps/api/ecosystem.config.cjs"
-  pm2 save
-fi
+chmod +x "$APP_DIR/apps/api/start.sh" 2>/dev/null || true
+pm2 delete ai-engineer-api 2>/dev/null || true
+pm2 start "$APP_DIR/apps/api/ecosystem.config.cjs"
+pm2 save
 
 echo "========================================================"
 echo "✅ AI Software Engineer API is running on port 8000!"

@@ -1,14 +1,10 @@
 name: CI / CD Pipeline
 
 on:
-  push:
-    branches:
-      - main
-      - development
-  pull_request:
-    branches:
-      - main
-      - development
+  schedule:
+    # Run daily at 2:00 AM IST (20:30 UTC)
+    - cron: '30 20 * * *'
+  workflow_dispatch:
 
 jobs:
   verify:
@@ -17,6 +13,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
@@ -51,7 +49,6 @@ jobs:
   deploy-backend:
     name: Deploy Backend to Oracle VM
     needs: verify
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy via SSH to Oracle Cloud
@@ -75,7 +72,8 @@ jobs:
             cd "$APP_DIR"
             git fetch origin main
             git checkout main
-            git pull origin main
+            git reset --hard origin/main
+            chmod +x apps/api/start.sh scripts/deploy-oracle.sh 2>/dev/null || true
 
             # Ensure uv is installed
             if ! command -v uv &> /dev/null; then
@@ -94,7 +92,9 @@ jobs:
               ~/.local/bin/uv run alembic upgrade head
             fi
 
-            # Reload API service with PM2
-            pm2 reload ai-engineer-api || pm2 start ecosystem.config.cjs --name ai-engineer-api
+            # Restart API service cleanly with PM2
+            pm2 delete ai-engineer-api || true
+            pm2 start ecosystem.config.cjs
+            pm2 save
             echo "==> Backend deploy completed successfully!"
 

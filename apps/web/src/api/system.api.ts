@@ -10,4 +10,3 @@ export async function getSystemConfig(): Promise<SystemConfig> {
   const res = await apiClient.get<SystemConfig>(API_ENDPOINTS.SYSTEM_CONFIG)
   return res.data
 }
-
