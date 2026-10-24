@@ -112,6 +112,7 @@ via `lib/common/local-storage.ts`.
 
 ```bash
 bun lint && bun typecheck && bun run build    # all workspaces
+bun --filter web test                         # frontend unit/component tests
 cd apps/api && uv run pytest                  # backend
 ```
 

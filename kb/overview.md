@@ -53,11 +53,25 @@ configured), or any local Ollama model (no key).
 ├── .agents/                 agent rules and installed skills
 ├── AGENTS.md / CLAUDE.md    entry point for coding agents
 ├── BUILDER.md               original product spec (history/intent)
-├── docker-compose.yml       Postgres (pgvector) + Redis
+├── Caddyfile                reverse proxy for single origin (HTTPS :443, HTTP :80)
+├── docker-compose.yml       full stack: Postgres (pgvector), Redis, API, Web, Caddy
 └── TO_LEARN/                the owner's personal study notes — not project source
 ```
 
 ## Running it locally
+
+### Option A: All-in-one with Docker & Caddy (recommended)
+
+One command brings up Postgres, Redis, API (runs migrations on start), Web, and Caddy:
+
+```bash
+cp .env.example .env                         # provide GITHUB_CLIENT_ID/SECRET and keys
+docker compose up --build                    # whole stack served on http://localhost
+```
+
+Caddy sits in front on port 80 and 443 with automatic local HTTPS, routing `/api/*` to the FastAPI backend and everything else to the frontend SPA — eliminating CORS and cookie path mismatches.
+
+### Option B: Local development processes
 
 Prerequisites: Bun ≥ 1.3, Node ≥ 20, Python 3.13 + `uv`, Docker, Git.
 Optional: Ollama (local models, see `ollama.md`). The same steps, written
@@ -65,7 +79,7 @@ for end users, are the app's public `/setup` page.
 
 ```bash
 bun install                                  # JS deps for every workspace
-docker compose up -d                         # Postgres :5433, Redis :6379
+docker compose up -d db redis                # Postgres :5433, Redis :6379
 cp apps/api/.env.example apps/api/.env       # then fill it in (below)
 (cd apps/api && uv sync)                     # Python deps
 bun db:migrate                               # alembic upgrade head
@@ -94,6 +108,7 @@ The web app reads `VITE_API_URL` (default `http://localhost:8000`).
 |---------------------|------|
 | `bun dev` | Web + API dev servers |
 | `bun lint` / `bun typecheck` / `bun run build` | Turbo across workspaces (web: eslint, tsc, vite build; api: ruff, mypy) |
+| `bun --filter web test` / `bun run test` | Frontend Vitest unit and component tests |
 | `bun run format` | Prettier (web/ui) and `ruff format` (api) |
 | `bun db:generate` | `alembic revision --autogenerate` — read `conventions.md` first |
 | `bun db:migrate` / `bun db:rollback` / `bun db:status` | Alembic upgrade / downgrade one / current |

@@ -35,7 +35,8 @@ Verified against the code. Remove an entry in the same change that fixes it.
 
 - **CORS has exactly one origin** (`FRONTEND_URL`, default
   `http://localhost:5173`). A dev server on another port gets CORS errors on
-  every call — the app then behaves as signed out.
+  every call — the app then behaves as signed out. (In the Docker + Caddy
+  setup, web and API share a single origin, avoiding CORS issues entirely).
 - **Rate limit: 300 requests / 60 s per client IP**, on every route. A
   dashboard page loads several lists at once; tests that hammer the API
   share the IP. The web app treats a failing `/me` as "signed out" only on

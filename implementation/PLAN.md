@@ -82,15 +82,25 @@ Attribution, docs, cleanup
 - [x] Tests: `tests/test_organizations.py` (access, owner rules,
       onboarding gates, key verification)
 
-## Next
+### Round 3 — Testing, Dockerization & Caddy gateway
 
-From `implementation/todo.md`
-- [ ] More test coverage — frontend (Vitest + Testing Library, as in the
-      SmartGrow repo), and API tests for projects/runs routes
-- [ ] Dockerize everything: one `docker compose up` for web, API, Postgres,
-      Redis (Ollama optional), with migrations on start
-- [ ] Caddy in front: HTTPS, one origin for web + API (also removes the
-      single-CORS-origin gotcha)
+- [x] Frontend test suite: Vitest + React Testing Library configured in
+      `apps/web`, unit tests for `status`, `dates`, `api-error`, and component
+      tests for `BuiltBy` and `ApplicationBadge`.
+- [x] Backend test suite: comprehensive API tests for `projects`
+      (`test_projects.py`) and `agent runs` (`test_runs.py`) covering access
+      rules, organization scoping, catalog, retry, cancel, and approval.
+- [x] Dockerization: production-ready multi-stage Dockerfiles for `apps/api`
+      (uv, python 3.13, git, automatic migrations on start) and `apps/web`
+      (Bun build + Caddy static server).
+- [x] Unified `docker-compose.yml`: brings up `db` (Postgres 17 pgvector),
+      `redis` (Redis 7), `api`, `web`, and `caddy` with health checks,
+      persisted volumes, and migrations on startup.
+- [x] Caddy reverse proxy: single-origin gateway on ports 80/443 with local
+      HTTPS, unbuffered SSE stream forwarding (`flush_interval -1`) for
+      `/api/*` and SPA routing for frontend.
+
+## Next
 
 Product
 - [ ] Choose a LICENSE (none yet = all rights reserved). If others may use

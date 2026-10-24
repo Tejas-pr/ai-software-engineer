@@ -1,7 +1,10 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios"
 import { API_ENDPOINTS } from "./endpoints"
 
-export const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000"
+export const baseURL =
+  import.meta.env.VITE_API_URL !== undefined
+    ? import.meta.env.VITE_API_URL
+    : "http://localhost:8000"
 
 // Auth is entirely httpOnly cookies (access + refresh) set by the backend —
 // no token ever touches localStorage or JS-readable state.
